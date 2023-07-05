@@ -7,58 +7,104 @@ import pyspark.sql.functions as F
 import pandas as pd
 import time
 import csv
+import os
+import json
+import boto3
 import itertools
 
+class AMFDataProcessor:
+    
+    def get_data(self, directory, metric=None, pod=None):
+        spark_dataframes = self.get_dataframes(directory)
+        spark_dataframe = self.transform_dataframe(spark_dataframes, metric, pod)
+        pandas_dataframe = self.get_values(spark_dataframe)
+        return pandas_dataframe
+    
+    def get_dataframes(self, directory):
+        """
+        This function extracts spark dataframes from a given directory of JSON files
+        :param directory: Path to JSON files
+        """
+        flag = False
+        print(os.listdir(directory))
+        for i, filename in enumerate(os.listdir(directory)):
+            if os.path.isfile(os.path.join(directory, filename)) and not flag:
+                appended_df = self.get_amf_data(os.path.join(directory, filename))
+                flag = True
+            elif flag:
+                if os.path.isfile(os.path.join(directory, filename)):
+                    new_df = self.get_amf_data(os.path.join(directory, filename))
+                    appended_df = appended_df.union(new_df)
+        return appended_df
+    
+    def transform_dataframe(self, amf_data, metric_name= None, pod_name=None):
+        """
+        This function tranforms the timestamps and filters based on metric_name and pod_name
+        :param amf_data: AMF Data
+        :param metric_name: Metric name to filter on
+        :param pod_name: Pod ID to filter on
+        """
+        amf_data = amf_data.withColumn("date_col", F.expr("transform(timestamps, x -> from_unixtime(x/1000))"))
+        if metric_name:
+            amf_data = amf_data.filter(F.col('metric___name__') == metric_name)
+        if pod_name:
+            amf_data = amf_data.filter(F.col("metric_pod").startswith(pod_name))
+        return amf_data
+    
+    def get_amf_data(self, json_object_path):
+        """
+        This function extracts the dataframe from JSON and filters out AMF data
+        :param json_object_path: Path to JSON
+        """
+        # print("file path", json_object_path)
+        obj = Nested_Json_Connector(json_object_path)
+        err, data = obj.read_nested_json()
+        data = data.select('timestamps', 'metric___name__', 'values', 'metric_pod', 'metric_container', 'metric_name', 'metric_namespace')
+        data = data.filter(F.col('metric_pod').startswith('open5gs-amf'))
+        data = data.filter(F.col('metric_pod').startswith('open5gs-amf') & \
+                           (F.col("metric_namespace") == "openverso") & (F.col('metric_name').isNotNull()))
+        return data
 
-def get_amf_data(json_object_path):
-    obj = Nested_Json_Connector(json_object_path)
-    err, data = obj.read_nested_json()
-    data = data.filter(F.col('metric_pod').startswith('open5gs-amf') & \
-                       (F.col("metric_namespace") == "openverso") & (F.col('metric_name').isNotNull()))
-    data = data.withColumn("date_col", F.expr("transform(timestamps, x -> from_unixtime(x/1000))"))
-    return data
+    def get_min_value(self, amf_data):
+        """
+        This function gets the value of a metric that is used to support the application
+        :param data: AMF Data
+        """
+        min_vals = amf_data.filter(F.col("metric_container").isNull()).select("values").rdd.flatMap(lambda x: x).collect()
+        min_val = None
+        if min_vals:
+            min_val = min_vals[0][0]
+        return min_val
 
+    def get_values(self, data):
+        """
+        This function extracts timestamps and values of a spark dataframe returns a pandas dataframe
+        :param data: AMF Data
+        """
+        min_val = self.get_min_value(data)
+        data = data.filter(F.col("metric_container").isNotNull())
 
-def transform_dataframe(amf_data, column_name, pod_name):
-    if column_name:
-        amf_data = amf_data.filter(F.col('metric___name__') == column_name)
-    if pod_name:
-        amf_data = amf_data.filter(F.col("metric_pod").startswith(pod_name))
-    return amf_data
+        x_values = data.select("date_col").rdd.flatMap(lambda x: x).collect()
+        y_values = data.select("values").rdd.flatMap(lambda x: x).collect()
 
+        x_flat = [item for sublist in x_values for item in sublist]
+        y_flat = [item for sublist in y_values for item in sublist]
 
-def get_min_value(data):
-    min_vals = data.filter(F.col("metric_container").isNull()).select("values").rdd.flatMap(lambda x: x).collect()
-    min_val = None
-    if min_vals:
-        min_val = min_vals[0][0]
-    return min_val
+        if min_val:
+            y_flat = [element + min_val for element in y_flat]
 
+        df = pd.DataFrame(
+            {'date_col': x_flat,
+             'values': y_flat,
+             })
 
-def get_values(data, metric):
-    min_val = get_min_value(data)
-    data = data.filter(F.col("metric_container").isNotNull())
+        df['date_col'] = pd.to_datetime(df['date_col'])
 
-    x_values = data.select("date_col").rdd.flatMap(lambda x: x).collect()
-    y_values = data.select("values").rdd.flatMap(lambda x: x).collect()
+        df = df.groupby('date_col').agg({'values': 'sum'}).reset_index()
+        return df
+  
 
-    x_flat = [item for sublist in x_values for item in sublist]
-    y_flat = [item for sublist in y_values for item in sublist]
-
-    if min_val:
-        y_flat = [element + min_val for element in y_flat]
-
-    df = pd.DataFrame(
-        {'date_col': x_flat,
-         'values': y_flat,
-         })
-
-    df['date_col'] = pd.to_datetime(df['date_col'])
-
-    if 'memory' in metric.split('_'):
-        df['values'] = df['values'] / 1048576
-
-    df = df.groupby('date_col').agg({'values': 'sum'}).reset_index()
-
-    return df
-
+    def download_chunks(self, local_path):
+        aws_command = f"aws s3 cp s3://open5gs-respons-logs/prometheus-metrics/respons-amf-forecaster/ {local_path} --recursive"
+        result = subprocess.run(aws_command, shell=True, check=True)
+           
