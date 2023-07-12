@@ -55,6 +55,11 @@ To use `FeatureEngineer`, follow these steps:
 4. The name of the CSV file will be in the following format: `sample::your_script_name.py::filename;type:feature_type.csv`. The `filename` will be replaced with the name of your provided CSV file and `feature_type` with the type of feature engineering applied.
 5. The path of the saved CSV file will be printed at the end of the script.
 
+### Description of Key Functions
+The `FeatureEngineer` class includes the following key methods:
+1. `get_data(self, data, feature_type)`: This method is used to read and modify the data based on the specified feature type.
+2. `read_data(self, path)`: This method reads a CSV file from a specified path and returns a pandas DataFrame.
+3. `value_modifier(self, data, metric)`: This method modifies the DataFrame based on the type of metric specified. Available metrics include 'memory', 'cpu', and 'cpu_utilization'.
 
 
 
