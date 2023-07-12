@@ -1,6 +1,6 @@
 # AMF Foresight
 
-## AMF Data Processing and Feature Engineering Pipeline with Orchestrator
+## AMF Data Processing and Feature Engineering Pipeline: Orchestrator
 This script integrates the `AMFDataProcessor` and `FeatureEngineer` classes through an `Orchestrator` class to create a comprehensive data pipeline for AMF data. 
 1. `AMFDataProcessor`: Reads and processes the AMF data from the provided directory. Can filter the data based on a specified metric and pod name.
 2. `FeatureEngineer`: Performs value modifications on the DataFrame based on the type of metric specified. The available metrics include 'memory', 'cpu', and 'cpu_utilization'
