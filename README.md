@@ -1,5 +1,29 @@
 # AMF Foresight
 
+## AMF Data Processing and Feature Engineering Pipeline with Orchestrator
+This script integrates the `AMFDataProcessor` and `FeatureEngineer` classes through an `Orchestrator` class to create a comprehensive data pipeline for AMF data. 
+1. `AMFDataProcessor`: Reads and processes the AMF data from the provided directory. Can filter the data based on a specified metric and pod name.
+2. `FeatureEngineer`: Performs value modifications on the DataFrame based on the type of metric specified. The available metrics include 'memory', 'cpu', and 'cpu_utilization'
+
+### Requirements
+Before you begin, ensure you have met the following requirements:
+* You have installed Python 3.6 or later.
+* You have installed the following Python libraries: `argparse`, `pandas`.
+
+### Using the Pipeline
+To use this pipeline, follow these steps:
+1. Navigate to the directory containing the script using the terminal.
+2. Run the following command:
+    ```bash
+    python your_script_name.py --directory [DIRECTORY_PATH] --metric [METRIC_NAME] --pod [POD_NAME] --type [FEATURE_TYPE]
+    ```
+    * Replace `your_script_name.py` with the name of your Python script.
+    * Replace `[DIRECTORY_PATH]` with the path to the directory containing your JSON files.
+    * Replace `[METRIC_NAME]` with the name of the metric to filter on.
+    * Replace `[POD_NAME]` with the name of the pod to filter on.
+    * Replace `[FEATURE_TYPE]` with the type of feature engineering to apply (options: 'memory', 'cpu', 'cpu_utilization').
+3. The script will read and process the data, perform feature engineering, and print a summary of the requested data and the first few entries of the data.
+
 ## Load Data: AMF Data Processor
 The `AMFDataProcessor` class is used to process AMF data. This script reads JSON files, performs transformations based on given parameters, provides a summary of the requested data, and saves it into a CSV file.
 
