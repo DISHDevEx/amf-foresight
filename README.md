@@ -5,17 +5,17 @@
 This script retrieves AMF data from a JSON file, performs transformations, optional filtering and returns a pandas dataframe.
 
 ### Requirements
-This script requires the following libraries: `Python 3.9.15`, `devex_sdk` `pyspark`, `datetime`, `collections`, `pandas`, `time`, `csv`, `os`, `json`, `boto3`, `itertools`, `pyspark`, `logging`, `argparse`
-Please install these Python packages before running the script.
+- Python: `Python 3.9.15
+- Python libraries: `devex_sdk` `pyspark`, `datetime`, `collections`, `pandas`, `time`, `csv`, `os`, `json`, `boto3`, `itertools`, `pyspark`, `logging`, `argparse`
 
 ### Usage
 
-1. Open your terminal.
-2. Navigate to the directory where the script is located.
-3. Execute the script using the command:
-
+1. Clone the repository.
+2. Open your terminal.
+3. Navigate to the repository on your local macine.
+4. Execute the script using the command:
 ```bash
-python load_data.py --directory /path/to/json --metric metric_name --pod pod_name
+python amf_foresight/load_data.py --directory /path/to/json --metric metric_name --pod pod_name
 ```
 
 ### Optional arguments: 
