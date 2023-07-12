@@ -58,15 +58,25 @@ class AMFDataProcessor:
             amf_data = amf_data.filter(F.col("metric_pod").startswith(pod_name))
         return amf_data
 
+    def get_all_amf_data(json_object_path):
+        """
+        This function extracts the dataframe from JSON and filters out all the AMF data regardless of whether a container name exists
+        :param json_object_path: Path to JSON
+        """
+        obj = Nested_Json_Connector(json_object_path)
+        err, data = obj.read_nested_json()
+        data = data.filter(F.col('metric_pod').startswith('open5gs-amf') & \
+                           (F.col("metric_namespace") == "openverso"))
+        return data
+    
     def get_amf_data(self, json_object_path):
         """
-        This function extracts the dataframe from JSON and filters out AMF data
+        This function extracts the dataframe from JSON and filters out AMF data with a container name
         :param json_object_path: Path to JSON
         """
         obj = Nested_Json_Connector(json_object_path)
         err, data = obj.read_nested_json()
         data = data.select('timestamps', 'metric___name__', 'values', 'metric_pod', 'metric_container', 'metric_name', 'metric_namespace')
-        data = data.filter(F.col('metric_pod').startswith('open5gs-amf'))
         data = data.filter(F.col('metric_pod').startswith('open5gs-amf') & \
                            (F.col("metric_namespace") == "openverso") & (F.col('metric_name').isNotNull()))
         return data
@@ -127,11 +137,18 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     processor = AMFDataProcessor()
-    data = processor.get_data(args.directory, args.metric)
+    data = processor.get_data(args.directory, args.metric, args.pod)
+    
+    
     print("Summary of Requested data:")
     print(data.describe())
     print("First few entries of requested data:")
     print(data.head())
+    filename = "sample::" + os.path.basename(__file__) + "::metric:" + str(args.metric) + ";pod:" + str(args.pod) + ";time:" + datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + '.csv'
+    path = "csv/" + filename                                                                                 
+    data.to_csv(path, index=False)
+    print("Data Saved to: ", path)
+                                                                                     
     
 
     
