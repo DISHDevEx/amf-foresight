@@ -36,15 +36,19 @@ To use `AMFDataProcessor`, follow these steps:
 1. Navigate to the directory containing the script using the terminal.
 2. Run the following command:
     ```bash
-    python your_script_name.py --directory [PATH_TO_JSON_FILES] --metric [METRIC_NAME] --pod [POD_NAME]
+    python your_script_name.py --chunks [CHUNKS_PATH] --jsons [JSONS_PATH] --start [START_TIME] --end [END_TIME] --level [CONTAINER_LEVEL] --metric [METRIC_NAME] --pod [POD_NAME]
     ```
-    * Replace `your_script_name.py` with the name of your Python script.
-    * Replace `[PATH_TO_JSON_FILES]` with the directory path where your JSON files are located.
-    * Replace `[METRIC_NAME]` with the name of the metric you want to filter on (optional).
-    * Replace `[POD_NAME]` with the name of the pod you want to filter on (optional).
+    * your_script_name.py: Replace with the name of your Python script.
+    * [CHUNKS_PATH]: Replace with the path to save the chunks.
+    * [JSONS_PATH]: Replace with the path to save the JSON files.
+    * [START_TIME]: Replace with the start time in %Y-%m-%d %H:%M:%S format.
+    * [END_TIME]: Replace with the end time in %Y-%m-%d %H:%M:%S format.
+    * [CONTAINER_LEVEL]: Replace with the container level to filter on.
+    * [METRIC_NAME]: (Optional) Replace with the name of the metric to filter on.
+    * [POD_NAME]: (Optional) Replace with the name of the pod to filter on.
 
 3. The script will process the data, print a summary of the requested data and the first few entries of the data, and save the data to a CSV file in the `csv` directory.
-4. The name of the CSV file will be in the following format: `sample::your_script_name.py::metric:MetricName;pod:PodName;time:current_timestamp.csv`. The `MetricName`, `PodName`, and `current_timestamp` will be replaced with your provided metric name, pod name, and the current timestamp, respectively.
+4. The name of the CSV file will be in the following format: `sample::your_script_name.py::metric:MetricName;pod:PodName;level:ContainerLevel;time:current_timestamp.csv`. The `MetricName`, `PodName`, and `current_timestamp` will be replaced with your provided metric name, pod name, and the current timestamp, respectively.
 5. The path of the saved CSV file will be printed at the end of the script.
 
 ### Description of Key Functions

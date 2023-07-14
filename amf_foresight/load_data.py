@@ -14,6 +14,7 @@ import itertools
 import pyspark
 import logging
 import argparse
+import subprocess
 
 
 class AMFDataProcessor:
@@ -148,7 +149,38 @@ class AMFDataProcessor:
         df = df.groupby('date_col').agg({'values': 'sum'}).reset_index()
         return df
 
+    def run_go(self, folder_path, destination_path, given_min_time_str, given_max_time_str):
+        
+        given_min_time_dt = datetime.strptime(given_min_time_str, '%Y-%m-%d %H:%M:%S')
+        given_max_time_dt = datetime.strptime(given_max_time_str, '%Y-%m-%d %H:%M:%S')
+        given_min_time = int(given_min_time_dt.timestamp() * 1000)
+        given_max_time = int(given_max_time_dt.timestamp() * 1000)
+        print(f"Given Min Time: {given_min_time_dt}")
+        print(f"Given Max Time: {given_max_time_dt}")
+        
+        for chunk_folder in os.listdir(folder_path):
+            chunk_folder_path = os.path.join(folder_path, chunk_folder)
+            if os.path.isdir(chunk_folder_path):
+                meta_json_path = os.path.join(chunk_folder_path, "meta.json")
+                with open(meta_json_path) as file:
+                    meta = json.load(file)
+                min_time = meta["minTime"]
+                max_time = meta["maxTime"]
+                print(f"Min Time: {datetime.fromtimestamp(min_time/1000).strftime('%Y-%m-%d %H:%M:%S')}")
+                print(f"Max Time: {datetime.fromtimestamp(max_time/1000).strftime('%Y-%m-%d %H:%M:%S')}")
 
+                if min_time >= given_min_time and max_time <= given_max_time:
+                    command = ['./prometheus-tsdb-dump/main','-bucket','open5gs-respons-logs','-prefix','prometheus-metrics/respons-amf-forecaster/'+ str(chunk_folder),'-local-path','tsdb-json','-block','tsdb-json/prometheus-metrics/respons-amf-forecaster/' + str(chunk_folder)]
+                    output = subprocess.run(command, capture_output=True)
+                    
+                    filename = str(chunk_folder) + '.json'
+                    with open(os.path.join(destination_path, filename), 'w') as file:
+                        file.write(output.stdout.decode())
+                    with open(os.path.join(destination_path, filename), 'r') as file:
+                        lines = file.readlines()
+                    with open(os.path.join(destination_path, filename), 'w') as file:
+                        file.writelines(lines[3:])
+    
     def download_chunks(self, local_path):
         """
         This function takes in the path to save the chunks and saves the raw data in the given path
@@ -157,12 +189,15 @@ class AMFDataProcessor:
         aws_command = f"aws s3 cp s3://open5gs-respons-logs/prometheus-metrics/respons-amf-forecaster/ {local_path} --recursive"
         result = subprocess.run(aws_command, shell=True, check=True)
            
-            
+                
 if __name__ == "__main__":
     
     
     parser = argparse.ArgumentParser(description="Process some AMF data.")
-    parser.add_argument("--directory", type=str, required=True, help="Path to JSON files directory.")
+    parser.add_argument("--chunks", type=str, required=True, help="Desired path for chunks")
+    parser.add_argument("--jsons", type=str, required=True, help="Desired path for jsons")
+    parser.add_argument("--start", type=str, required=True, help="Start time in %Y-%m-%d %H:%M:%S format")
+    parser.add_argument("--end", type=str, required=True, help="End time in %Y-%m-%d %H:%M:%S format")
     parser.add_argument("--level", type=str, required=True, help="Container level to filter on.")
     parser.add_argument("--metric", type=str, required=False, help="Metric name to filter on.")
     parser.add_argument("--pod", type=str, required=False, help="Pod name to filter on.")
@@ -170,7 +205,15 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     processor = AMFDataProcessor()
-    data = processor.get_data(args.directory, args.level, args.metric, args.pod)
+    
+    time1 = time.time()
+    # print('Downloading Chunks..', time.time()-time1)
+    # processor.download_chunks(args.chunks)
+    # print('Downloaded Dataframes..', time.time()-time1)
+    processor.run_go(args.chunks, args.jsons, args.start, args.end)
+    print('Generated JSONS..', time.time()-time1)
+    data = processor.get_data(args.jsons, args.level, args.metric, args.pod)
+    print('Generating Dataframe..', time.time()-time1)
     
     
     print("Summary of Requested data:")
