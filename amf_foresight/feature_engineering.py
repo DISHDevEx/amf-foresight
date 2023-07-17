@@ -1,12 +1,23 @@
+from datetime import datetime
+from setup_logger import setup_logger
 import pandas as pd
 import argparse
+import logging
+import time
 import os
 
+setup_logger()
+
 class FeatureEngineer:
+        
     
-    def get_data(self, data, feature_type):
-        data = self.read_data(data)
-        data = self.value_modifier(data, feature_type)
+    def get_data(self, args):
+        """
+        This function orchestrases the feature engineering process when used as a script
+        :param args: arguments passed to the script
+        """
+        panda = self.read_data(args.data)
+        data = self.value_modifier(panda, args.type)
         return data
     
     def read_data(self, path):
@@ -14,7 +25,7 @@ class FeatureEngineer:
         This function takes in a path to a CSV of filtered AMF Data and returns a dataframe
         :param directory: Path to CSV with filtered AMF Data
         """
-        data = pd.read_csv(path)
+        data = pd.read_parquet(path)
         return data
     
     def value_modifier(self, data, metric):
@@ -22,11 +33,16 @@ class FeatureEngineer:
         This function takes in a pandas dataframe and modifies the values based on the type of metric
         :param directory: Path to JSON files
         """
+        logging.info("Feature Engineering Data")
+        logging.info(f"Feature Type={metric}")
         if metric == 'memory':
+            logging.info(f"Dividing {metric} by 1048576")
             data['values'] = data['values'] / 1048576
         elif metric == 'cpu':
+            logging.info(f"Leaving {metric} as is")
             data['values'] = data['values']
         elif metric == 'cpu_utilization':
+            logging.info(f"Calculation {metric} by dividing difference in consecutive difference in metric divided by time elapsed time 100")
             data['time_diff'] = data['date_col'].diff().dt.total_seconds()
             data['usage_diff'] = data['values'].diff()
             data['utilization'] = (data['usage_diff'].diff()/data['time_diff']) * 100
@@ -41,15 +57,15 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     feature_engineer = FeatureEngineer()
-    data = feature_engineer.get_data(args.data, args.type)
+    data = feature_engineer.get_data(args)
     
     print("Summary of Requested data:")
     print(data.describe())
     print("First few entries of requested data:")
     print(data.head())
-    filename = "sample::" + str(os.path.basename(__file__)) + "::" + args.data.split("::")[-1] + ";type:" + args.type + ".csv"
-    path = "csv/" + filename                                                                                 
-    data.to_csv(path, index=False)
+    filename = "sample::" + str(os.path.basename(__file__)) + "::" + args.data.split("::")[-1] + ";type:" + args.type + ";time:" + datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
+    path = "parquet/" + filename                                                                                 
+    data.to_parquet(path, index=False)
     print("Data Saved to: ", path)
     
     
