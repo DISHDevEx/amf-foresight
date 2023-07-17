@@ -71,7 +71,7 @@ class AMFDataProcessor:
             
             return panda
     
-    def get_data(self, directory, container_level, metric=None, pod=None):
+    def get_data(self, directory, container_level="all", metric=None, pod=None):
         """
         This function takes in the directory of JSON files and returns a combined pandas dataframes
         :param directory: Path to JSON files
@@ -111,7 +111,18 @@ class AMFDataProcessor:
             amf_data = amf_data.filter(F.col("metric_pod").startswith(pod_name))
         return amf_data
     
-    def get_amf_data(self, json_object_path, container_level):
+    def get_all_data(self, json_object_path, container_level="all"):
+        """
+        This function grabs all data without filtering for EDA purposes 
+        :param json_object_path: Path to JSON
+        """
+        obj = Nested_Json_Connector(json_object_path)
+        err, data = obj.read_nested_json()
+        data = data.filter(F.col("metric_namespace") == "openverso")
+        data = data.filter(F.col('metric_pod').startswith('open5gs'))
+        return data
+    
+    def get_amf_data(self, json_object_path, container_level="all"):
         """
         This function extracts the dataframe from JSON and filters out AMF data with a container name
         :param json_object_path: Path to JSON
