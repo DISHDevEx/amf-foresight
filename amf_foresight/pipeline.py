@@ -6,7 +6,7 @@ import argparse
 import logging
 import time 
 import os
-
+import sys
 setup_logger()
 
 class Orchestrator:
@@ -23,15 +23,14 @@ class Orchestrator:
         raw = self.processor.run(args)
         processed = self.feature_engineer.value_modifier(raw, args.type)
         logging.info("Preprocessed Data.")
+        return processed
         
-        filename = "sample::" + os.path.basename(__file__) + "::metric:" + str(args.metric) + ";pod:" + str(args.pod) + ";level:" + str(args.level) + ";time:" + datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
-        path = "parquet/" + filename                                                                                 
-        processed.to_parquet(path, index=False)
-        print("Data Saved to: ", path)
         
     
     
 if __name__ == "__main__":    
+    
+    
     parser = argparse.ArgumentParser(description="Process some AMF data.")
     parser.add_argument("--download", action='store_true', help="Include this flag to download chunks. --download requires --chunks.")
     parser.add_argument("--process", action='store_true', help="Include this flag to process chunks into JSON format. --process requires --chunks, --jsons, --start, and --end.")
@@ -48,9 +47,21 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     
+    sys.stdout = open('logs/console_output.log', 'w')
     orchestra = Orchestrator()
-    orchestra.preprocessing(args)
+    processed = orchestra.preprocessing(args)
     
-    
+    summary_str = processed.describe().to_string().replace('\n', ' | ')
+    head_str = processed.head().to_string().replace('\n', ' | ')
+
+    logging.info("Summary of Requested data:")
+    logging.info(summary_str)
+    logging.info("First few entries of requested data:")
+    logging.info(head_str)
+
+    filename = "sample::" + os.path.basename(__file__) + "::metric:" + str(args.metric) + ";pod:" + str(args.pod) + ";level:" + str(args.level) + ";time:" + datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
+    path = "parquet/" + filename                                                                                 
+    processed.to_parquet(path, index=False)
+    logging.info(f"Data Saved to: {path}")
     
     

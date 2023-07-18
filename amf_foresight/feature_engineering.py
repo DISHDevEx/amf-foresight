@@ -5,6 +5,7 @@ import argparse
 import logging
 import time
 import os
+import sys
 
 setup_logger()
 
@@ -56,18 +57,19 @@ if __name__ == "__main__":
     parser.add_argument("--type", type=str, required=False, help="Type of Feature Engineering")
     args = parser.parse_args()
     
+    sys.stdout = open('logs/console_output.log', 'w')
     feature_engineer = FeatureEngineer()
     data = feature_engineer.get_data(args)
     
-    print("Summary of Requested data:")
-    print(data.describe())
-    print("First few entries of requested data:")
-    print(data.head())
+    summary_str = data.describe().to_string().replace('\n', ' | ')
+    head_str = data.head().to_string().replace('\n', ' | ')
+    
+    logging.info("Summary of Requested data:")
+    logging.info(summary_str)
+    logging.info("First few entries of requested data:")
+    logging.info(head_str)
+
     filename = "sample::" + str(os.path.basename(__file__)) + "::" + args.data.split("::")[-1] + ";type:" + args.type + ";time:" + datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
     path = "parquet/" + filename                                                                                 
     data.to_parquet(path, index=False)
-    print("Data Saved to: ", path)
-    
-    
-    
-    
+    logging.info(f"Data Saved to: {path}")
