@@ -1,5 +1,17 @@
 # AMF Foresight
 
+## AMF Foresight
+
+## What is AMF ?
+
+## Where is AMF located ? (Kubernetes)
+
+## What are Prometheus Metrics ? Why use Prometheus ?
+
+## Problem: Dynamic Scaling 
+
+## Solution: Dynamic Allocation Using Resource Forecasting
+
 ## AMF Data Processing and Feature Engineering Pipeline: Orchestrator
 This script integrates the `AMFDataProcessor` and `FeatureEngineer` classes through an `Orchestrator` class to create a comprehensive data pipeline for AMF data. 
 1. `AMFDataProcessor`: Reads and processes the AMF data from the provided directory. Can filter the data based on a specified metric and pod name.
