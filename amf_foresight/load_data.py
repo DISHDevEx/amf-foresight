@@ -4,6 +4,7 @@ from pyspark.sql import SparkSession
 from datetime import datetime
 from setup_logger import setup_logger
 from collections import defaultdict
+from utils import Utils
 import pyspark.sql.functions as F
 import pandas as pd
 import time
@@ -21,6 +22,9 @@ import sys
 setup_logger()
 
 class AMFDataProcessor:
+    
+    def __init__(self):
+        self.utils = Utils()
     
     def clear_folders(self, folders):
         """
@@ -203,19 +207,23 @@ class AMFDataProcessor:
                 
 
                 if min_time >= given_min_time and max_time <= given_max_time:
-                    min_time_str = datetime.fromtimestamp(min_time/1000).strftime('%Y-%m-%d %H:%M:%S')
-                    max_time_str = datetime.fromtimestamp(max_time/1000).strftime('%Y-%m-%d %H:%M:%S')
+                    min_time_str = datetime.fromtimestamp(min_time/1000).strftime('%Y-%m-%d %H-%M-%S')
+                    max_time_str = datetime.fromtimestamp(max_time/1000).strftime('%Y-%m-%d %H-%M-%S')
+                    file_min_time_str = datetime.fromtimestamp(min_time/1000).strftime('%Y%m%d %H%M%S')
+                    file_max_time_str = datetime.fromtimestamp(max_time/1000).strftime('%Y%m%d %H%M%S')
                     logging.info(f"Selected chunk's time interval: {min_time_str} - {max_time_str}")
                     command = ['./prometheus-tsdb-dump/main','-bucket','open5gs-respons-logs','-prefix','prometheus-metrics/respons-amf-forecaster/'+ str(chunk_folder),'-local-path','tsdb-json','-block','tsdb-json/prometheus-metrics/respons-amf-forecaster/' + str(chunk_folder)]
                     output = subprocess.run(command, capture_output=True)
-                    filename = str(chunk_folder) + '.json'
+                    filename = str(file_min_time_str) + "-" + str(file_max_time_str) + '.json'
                     with open(os.path.join(destination_path, filename), 'w') as file:
                         file.write(output.stdout.decode())
                     with open(os.path.join(destination_path, filename), 'r') as file:
                         lines = file.readlines()
                     with open(os.path.join(destination_path, filename), 'w') as file:
                         file.writelines(lines[3:])
-                    logging.info(f"Saved JSON to {os.path.join(destination_path, filename)}")
+                    logging.info(f"(Locally) Saved JSON to {os.path.join(destination_path, filename)}")
+                    self.utils.upload_file(str(os.path.join(destination_path, filename)), str(os.path.join(destination_path, filename)))
+                    
                     
                     
     def download_chunks(self, local_path):
@@ -266,7 +274,7 @@ if __name__ == "__main__":
     logging.info("First few entries of requested data:")
     logging.info(head_str)
         
-    filename = "sample::" + os.path.basename(__file__) + "::metric:" + str(args.metric) + ";pod:" + str(args.pod) + ";level:" + str(args.level) + ";time:" + datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
+    filename = "sample::" + os.path.basename(__file__) + "::metric:" + str(args.metric) + ";pod:" + str(args.pod) + ";level:" + str(args.level) + ";start:" + datetime.fromtimestamp(args.start).strftime('%Y-%m-%d %H:%M:%S') + ";end:" + datetime.fromtimestamp(args.end).strftime('%Y-%m-%d %H:%M:%S') 
     filepath = os.path.join(args.parquet, filename)                                                                                 
     panda.to_parquet(filepath, compression='gzip')
     logging.info(f"Data Saved to:{filepath}")    
