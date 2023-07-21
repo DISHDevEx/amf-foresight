@@ -1,5 +1,10 @@
 import boto3
+import pandas as pd
+from io import BytesIO
+import logging
 from setup_logger import setup_logger
+from botocore.exceptions import ClientError
+
 
 setup_logger()
 
@@ -10,32 +15,52 @@ class Utils:
         class constructor.
         """
         self.bucket_name = 'open5gs-amf-foresight'
+        self.resource = boto3.resource('s3')
         self.client = boto3.client('s3')
     
-    def upload_model(self, local_path, key):
+    def upload_file(self, local_path, key):
         """
         upload any file to s3.
         """
         try:
-            self.client.upload_file(local_path, key, self.bucket_name)
+            self.client.upload_file(local_path, self.bucket_name, key)
         except ClientError as error:
             logging.error(error)
             return False
-        return print(f'Uploaded Path: s3://{bucket_name}/{key}')
+        logging.info(f'(S3) Uploaded File to: s3://{self.bucket_name}/{key}')
+        return True
 
 
-    def download_model(self, local_path, key):
+    def download_file(self, local_path, key):
         """ 
         downloads any file to s3.
         """
         with open(local_path, 'wb') as file:
             self.client.download_fileobj(self.bucket_name, key, file)
-        return print(f"Downloaded file to: {local_path}")
-
-if __name__ == "__main__":    
-    bucket_name = 'open5gs-amf-foresight'
-    model_file_path = 'models/model100.pkl'
-    s3_key = 'models/model.pkl'
-
-    uploader = Utils()
-    uploader.download_model(model_file_path, s3_key)
+        logging.info(f"Downloaded file to: {local_path}")
+        return True
+    
+    def read_parquet_to_pandas_df(self, key):
+        """
+        reads parquet to df.
+        """
+        buffer = BytesIO()
+        object_ = self.resource.Object(self.bucket_name, key)
+        object_.download_fileobj(buffer)
+        dataframe = pd.read_parquet(buffer)
+        return dataframe
+    
+    def pandas_dataframe_to_s3(self, input_datafame, key):
+        """
+        upload a pandas dataframe to s3.
+        """
+        out_buffer = BytesIO()
+        input_datafame.to_parquet(out_buffer, index=False)
+        try:
+            self.client.put_object(Bucket=self.bucket_name, Key=key, Body=out_buffer.getvalue())
+        except ClientError as error:
+            logging.error(error)
+            return False
+        logging.info(f'(S3) Uploaded Dataframe to: s3://{self.bucket_name}/{key}')
+        return True
+    
