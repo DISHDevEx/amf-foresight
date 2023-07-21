@@ -1,13 +1,19 @@
 import pandas as pd
 import numpy as np
 import argparse
+import os
 from statsmodels.tsa.arima.model import ARIMA
 from sklearn.metrics import mean_squared_error
+from datetime import datetime
+import time
 import matplotlib.pyplot as plt
 
+
+
 class ARIMAModel:
-    def __init__(self, data):
+    def __init__(self, data, metric):
         self.dataframe = data
+        self.metric = metric
         self.values = self.dataframe['values'].values
         self.test_size = 0.2
         self.forecast_eval_size = 0.1
@@ -68,7 +74,7 @@ class ARIMAModel:
     def evaluate_forecast(self, steps):
         forecasted_values = self.forecast(steps)
         mse = mean_squared_error(self.forecast_eval[:steps], forecasted_values)
-        return mse
+        return forecasted_values, mse
 
     def plot(self, forecast_steps):
         # Extract date values
@@ -92,8 +98,15 @@ class ARIMAModel:
         plt.plot(forecast_eval_dates[:forecast_steps], forecasted_values[:forecast_steps], label='Forecast')
 
         plt.legend()
-        plt.savefig('arima2.png')
+        if not os.path.exists("assets"):
+            os.makedirs("assets")
+        image_path = 'assets/ARIMA' + datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + '.png'
+        plt.title(str(self.metric))
+        plt.xlabel("Time")
+        plt.ylabel("Values")
+        plt.savefig(image_path)
         plt.show()
+        return image_path
 
 
 if __name__ == "__main__":

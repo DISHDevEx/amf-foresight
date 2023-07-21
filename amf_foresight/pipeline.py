@@ -39,14 +39,14 @@ class Orchestrator:
         self.selected_model = args.model
         logging.info(f"Selected model is {self.selected_model}")
         if self.selected_model == 'ARIMA':
-            self.model = ARIMAModel(self.data)    
+            self.model = ARIMAModel(self.data, args.metric)    
         if self.selected_model != "PROPHET":
             logging.info(f"Tuning hyperparamers..")
             hyper, mse = self.model.run()
             logging.info(f"Best hyperparameters for this model: {hyper} Test MSE: {mse}")
         if not os.path.exists("models"):
-            logging.info(f"Creating folder: {folder}")
-            os.makedirs(folder)
+            logging.info(f"Creating folder: models")
+            os.makedirs("models")
         model_file_path = "models/" + self.selected_model.lower() + ";params:" + str(hyper) + ";time:" + datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
         with open(model_file_path, 'wb') as model_file:
             pickle.dump(self.model.model_fit, model_file)
@@ -86,8 +86,15 @@ class Orchestrator:
                 self.data = pd.read_parquet(args.data)
             self.train(args)
         if args.forecast:
-            mse = self.model.evaluate_forecast(10)
-            self.model.plot(10)
+            forecasted_values, mse = self.model.evaluate_forecast(args.steps)
+            image_path = self.model.plot(args.steps)
+            logging.info(f"Forecasted values: {forecasted_values}, Forecast MSE: {mse}")
+            logging.info(f"(Locally) Saved Plot: {image_path}")
+            self.utils.upload_file(image_path, image_path)
+         
+            
+            
+            
             
         
         
@@ -118,6 +125,7 @@ if __name__ == "__main__":
     parser.add_argument("--metric", type=str, help="Metric name to filter on. Leave empty for all metrics.")
     parser.add_argument("--pod", type=str, help="Pod name to filter on. Leave empty for all pods.")    
     parser.add_argument("--model", type=str, help="Model you would like to use.")
+    parser.add_argument("--steps", type=int, help="Number of timesteps you want to forecast")
     
     
     args = parser.parse_args()
@@ -133,8 +141,8 @@ if __name__ == "__main__":
         parser.error("--generate requires --jsons, --parquet, and --level.")
     if args.train and not ((all([args.generate, args.model])) or (all([args.data, args.model]))):
         parser.error("--train requires --data and --model or --generate and --model")
-    if args.forecast and not args.train:
-        parser.error("--forecast requires --train")
+    if args.forecast and not all([args.train, args.steps]):
+        parser.error("--forecast requires --train and --steps")
        
     orchestra = Orchestrator()
     orchestra.run(args)
