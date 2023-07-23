@@ -111,7 +111,8 @@ class ARIMAModel:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Feature Engineer AMF data.")
-    parser.add_argument("--data", type=str, required=False, help="Path to filtered AMF data")
+    parser.add_argument("--data", type=str, required=True, help="Path to filtered AMF data")
+    parser.add_argument("--metric", type=str, required=True, help="Metric name to filter on. Leave empty for all metrics.")
     args = parser.parse_args()
     dataframe = pd.read_parquet(args.data)
     
