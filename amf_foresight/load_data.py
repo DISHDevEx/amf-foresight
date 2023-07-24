@@ -5,6 +5,7 @@ from datetime import datetime
 from setup_logger import setup_logger
 from collections import defaultdict
 from utils import Utils
+import plotly.express as px
 import pyspark.sql.functions as F
 import pandas as pd
 import time
@@ -68,8 +69,26 @@ class AMFDataProcessor:
             logging.info(f"Running with arguments for generate: jsons={args.jsons}, level={args.level}, metric={args.metric}, pod={args.pod}")
             spark, panda = self.get_data(args.jsons, args.level, args.metric, args.pod)
             logging.info("Generated dataframe")
-          
+            logging.info("Plotting dataframe")
             return panda
+    
+    def plot(self, df, args):
+        fig = px.line(df, x='date_col', y='values', color='container')
+        fig.update_layout(
+            title=args.metric,
+            xaxis=dict(title='date_col'),
+            yaxis=dict(title='values')
+        )
+        fig.show()
+        if not os.path.exists("assets"):
+            os.makedirs("assets")
+        image = "plot::" + os.path.basename(__file__) + "::metric:" + str(args.metric) + ";pod:" + str(args.pod) + ";level:" + str(args.level) + ";start:" + args.start + ";end:" + args.end + ".png"
+        image_path = os.path.join("assets", image)
+        fig.write_image(image_path, width=800, height=600)
+        logging.info(f"(Locally) Saved Plot to {image_path}")
+        self.utils.upload_file(image_path, image_path)
+        
+        
     
     def get_data(self, directory, container_level="all", metric=None, pod=None):
         """
@@ -169,9 +188,11 @@ class AMFDataProcessor:
             
         x_values = data.select("date_col").rdd.flatMap(lambda x: x).collect()
         y_values = data.select("values").rdd.flatMap(lambda x: x).collect()
+        z_values = data.select("metric_name").rdd.flatMap(lambda x: x).collect()
 
         x_flat = [item for sublist in x_values for item in sublist]
         y_flat = [item for sublist in y_values for item in sublist]
+        z_repeat = [label for sublist, label in zip(x_values, z_values) for _ in sublist]
 
         if min_val:
             y_flat = [element + min_val for element in y_flat]
@@ -179,8 +200,10 @@ class AMFDataProcessor:
         df = pd.DataFrame(
             {'date_col': x_flat,
              'values': y_flat,
+             'container': z_repeat
              })
-
+        
+        df['container'] = [(str(i)[:7] + '..') if len(str(i)) > 7 else str(i) for i in df['container']]
         df['date_col'] = pd.to_datetime(df['date_col'])
         df = df.sort_values('date_col')
         return df
