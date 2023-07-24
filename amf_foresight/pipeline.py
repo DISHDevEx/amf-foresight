@@ -1,5 +1,6 @@
 import pandas as pd
 from load_data import AMFDataProcessor
+from prophet_model import ProphetModel
 from datetime import datetime
 from setup_logger import setup_logger
 from feature_engineering import FeatureEngineer
@@ -38,16 +39,23 @@ class Orchestrator:
     def train(self, args):
         self.selected_model = args.model
         logging.info(f"Selected model is {self.selected_model}")
+        hyper = None
         if self.selected_model == 'ARIMA':
-            self.model = ARIMAModel(self.data, args.metric)    
-        if self.selected_model != "PROPHET":
+            self.model = ARIMAModel(self.data, args.metric)
             logging.info(f"Tuning hyperparamers..")
             hyper, mse = self.model.run()
             logging.info(f"Best hyperparameters for this model: {hyper} Test MSE: {mse}")
+        elif self.selected_model == 'PROPHET':
+            self.model = ProphetModel(self.data, args.metric)
+            mse = self.model.run()
+            logging.info(f"Test MSE: {mse}")
+
         if not os.path.exists("models"):
             logging.info(f"Creating folder: models")
             os.makedirs("models")
+
         model_file_path = "models/" + self.selected_model.lower() + ";params:" + str(hyper) + ";time:" + datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
+
         with open(model_file_path, 'wb') as model_file:
             pickle.dump(self.model.model_fit, model_file)
         self.utils.upload_file(model_file_path, model_file_path)
@@ -81,13 +89,13 @@ class Orchestrator:
             path = self.save(self.data)
         if args.train:
             if isinstance(processed, pd.DataFrame):
-                self.data = pd.read_parquet(path)
+                self.data = processed
             else:
                 self.data = pd.read_parquet(args.data)
             self.train(args)
         if args.forecast:
-            forecasted_values, mse = self.model.evaluate_forecast(args.steps)
-            image_path = self.model.plot(args.steps)
+            forecasted_values, mse = self.model.evaluate_forecast()
+            image_path = self.model.plot()
             logging.info(f"Forecasted values: {forecasted_values}, Forecast MSE: {mse}")
             logging.info(f"(Locally) Saved Plot: {image_path}")
             self.utils.upload_file(image_path, image_path)
@@ -121,7 +129,7 @@ if __name__ == "__main__":
     parser.add_argument("--start", type=str, help="Start time of the data extraction in the format %%Y-%%m-%%d %%H:%%M:%%S.")
     parser.add_argument("--end", type=str, help="End time of the data extraction in the format %%Y-%%m-%%d %%H:%%M:%%S.")
     parser.add_argument("--level", type=str, help="Container level to filter on. Could be 'amf', 'support', 'upperlimit', 'amf+support' ")
-    parser.add_argument("--type", type=str, help="Type of feature you want.")
+    parser.add_argument("--type", type=str, help="Type of feature you want. Could be 'memory', 'cpu' or 'utilization'")
     parser.add_argument("--metric", type=str, help="Metric name to filter on. Leave empty for all metrics.")
     parser.add_argument("--pod", type=str, help="Pod name to filter on. Leave empty for all pods.")    
     parser.add_argument("--model", type=str, help="Model you would like to use.")
@@ -137,8 +145,8 @@ if __name__ == "__main__":
         parser.error("--download requires --chunks.")
     if args.process and not all([args.chunks, args.jsons, args.start, args.end]):
         parser.error("--process requires --chunks, --jsons, --start, and --end.")
-    if args.generate and not all([args.jsons, args.parquet, args.level]):
-        parser.error("--generate requires --jsons, --parquet, and --level.")
+    if args.generate and not all([args.jsons, args.parquet, args.level, args.type]):
+        parser.error("--generate requires --jsons, --parquet, --type and --level.")
     if args.train and not ((all([args.generate, args.model])) or (all([args.data, args.model]))):
         parser.error("--train requires --data and --model or --generate and --model")
     if args.forecast and not all([args.train, args.steps]):
