@@ -1,17 +1,21 @@
 from datetime import datetime
 from setup_logger import setup_logger
+import plotly.express as px
 import pandas as pd
 import argparse
 import logging
 import time
 import os
 import sys
+from utils import Utils
 
 setup_logger()
 
 class FeatureEngineer:
         
-    
+    def __init__(self):
+        self.utils = Utils()
+        
     def get_data(self, args):
         """
         This function orchestrases the feature engineering process when used as a script
@@ -49,6 +53,23 @@ class FeatureEngineer:
             data['utilization'] = (data['usage_diff'].diff()/data['time_diff']) * 100
             data.fillna(0, inplace=True)
         return data
+    
+    def plot(self, df, args):
+        logging.info("Plotting dataframe")
+        fig = px.line(df, x='date_col', y='values', color='container')
+        fig.update_layout(
+            title=args.metric,
+            xaxis=dict(title='date_col'),
+            yaxis=dict(title='values')
+        )
+        fig.show()
+        if not os.path.exists("assets"):
+            os.makedirs("assets")
+        image = "plot::" + os.path.basename(__file__) + "::metric:" + str(args.metric) + ";pod:" + str(args.pod) + ";level:" + str(args.level) + ";start:" + args.start + ";end:" + args.end + ".png"
+        image_path = os.path.join("assets", image)
+        fig.write_image(image_path, width=900, height=600)
+        logging.info(f"(Locally) Saved Plot to {image_path}")
+        self.utils.upload_file(image_path, image_path)
             
 
 if __name__ == "__main__":    
