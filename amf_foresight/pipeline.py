@@ -55,8 +55,8 @@ class Orchestrator:
             logging.info(f"Forecasted Values {forecasted_values} Forecast MSE: {forecast_mse}")
         elif self.selected_model == 'LSTM':
             self.model = LSTMModel(self.data)
-            hyper, mse, forecast_mse, image_path = self.model.run()
-            logging.info(f"Test MSE: {mse} Forecast MSE: {forecast_mse}")       
+            hyper, train_mse, mse, forecast_mse, image_path = self.model.run()
+            logging.info(f"Train MSE: {train_mse} Test MSE: {mse} Forecast MSE: {forecast_mse}")       
         logging.info(f"(Locally) Saved Plot: {image_path}")
         self.utils.upload_file(image_path, image_path)
         if not os.path.exists("models"):
