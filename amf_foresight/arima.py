@@ -82,7 +82,9 @@ class ARIMAModel:
         self.fit(best_order)
         self.predict()
         mse = self.evaluate()
-        return best_order, mse
+        forecasted_values, forecast_mse = self.evaluate_forecast()
+        image_path = self.plot()
+        return best_order, mse, forecasted_values, forecast_mse, image_path
 
     def forecast(self):
         """
