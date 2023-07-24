@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import time
+import argparse
 from datetime import datetime
 import pandas as pd
 import numpy as np
@@ -22,32 +23,39 @@ class LSTMModel:
         self.scaler = MinMaxScaler(feature_range=(0, 1))
         self.df = df[['date_col', 'values']]
         self.df.set_index('date_col', inplace=True)
-        self.df = self.df.values
-        self.X, self.Y = self.create_dataset()
-        self.model_fit = None
-
-    def create_dataset(self):
-        data = self.scaler.fit_transform(self.df)
-        X, Y = [], []
-        for i in range(len(data) - self.look_back - self.steps_ahead + 1):
-            X.append(data[i: i + self.look_back, 0])
-            Y.append(data[i + self.look_back: i + self.look_back + self.steps_ahead, 0])
-        return np.array(X), np.array(Y)
+        self.train = None
+        self.val = None
+        self.test = None
 
     def split_data(self):
-        train_size = int(len(self.X) * 0.7)
-        val_size = int(len(self.X) * 0.15)
-        self.X_train, self.Y_train = self.X[:train_size], self.Y[:train_size]
-        self.X_val, self.Y_val = self.X[train_size:train_size+val_size], self.Y[train_size:train_size+val_size]
-        self.X_test, self.Y_test = self.X[train_size+val_size:], self.Y[train_size+val_size:]
+        data = self.df.values
+        train_size = int(len(data) * 0.7)
+        val_size = int(len(data) * 0.2)
+
+        # Scale the data
+        self.scaler.fit(data[:train_size])
+        data = self.scaler.transform(data)
+
+        # Split the data
+        self.train, self.val, self.test = data[:train_size], data[train_size:train_size+val_size], data[train_size+val_size:]
+
+    def create_dataset(self):
+        data_parts = [self.train, self.val, self.test]
+        X_parts, Y_parts = [], []
+        for part in data_parts:
+            X, Y = [], []
+            for i in range(len(part) - self.look_back - self.steps_ahead + 1):
+                X.append(part[i: i + self.look_back, 0])
+                Y.append(part[i + self.look_back: i + self.look_back + self.steps_ahead, 0])
+            X_parts.append(np.array(X))
+            Y_parts.append(np.array(Y))
+        return X_parts, Y_parts
 
     def reshape_data(self):
-        self.X_train = np.reshape(self.X_train, (self.X_train.shape[0], 1, self.X_train.shape[1]))
-        self.X_val = np.reshape(self.X_val, (self.X_val.shape[0], 1, self.X_val.shape[1]))
-        self.X_test = np.reshape(self.X_test, (self.X_test.shape[0], 1, self.X_test.shape[1]))
-        
+        self.X_train, self.X_val, self.X_test = [np.reshape(x, (x.shape[0], 1, x.shape[1])) for x in self.X]
+        self.Y_train, self.Y_val, self.Y_test = self.Y  
 
-    def train(self):
+    def training(self):
         def create_model(neurons=50, optimizer='adam'):
             model = Sequential()
             model.add(LSTM(neurons, input_shape=(1, self.look_back)))
@@ -70,34 +78,38 @@ class LSTMModel:
         
     
     def predict_and_plot(self):
+        # Predict
         train_predict = self.model_fit.predict(self.X_train)
         val_predict = self.model_fit.predict(self.X_val)
         test_predict = self.model_fit.predict(self.X_test)
 
-        train_predict = self.scaler.inverse_transform(train_predict)
-        val_predict = self.scaler.inverse_transform(val_predict)
-        test_predict = self.scaler.inverse_transform(test_predict)  # Removed reshaping
+        # Inverse scaling
+        train_predict = self.scaler.inverse_transform(train_predict.reshape(-1, 1))
+        val_predict = self.scaler.inverse_transform(val_predict.reshape(-1, 1))
+        test_predict = self.scaler.inverse_transform(test_predict.reshape(-1, 1))
 
-        # Compute MSE for Validation and Test predictions
-        Y_val_inv = self.scaler.inverse_transform(self.Y_val)  # Inverse transform once
-        Y_test_inv = self.scaler.inverse_transform(self.Y_test)  # Inverse transform once
+        Y_train_inv = self.scaler.inverse_transform(self.Y_train.reshape(-1, 1))
+        Y_val_inv = self.scaler.inverse_transform(self.Y_val.reshape(-1, 1))
+        Y_test_inv = self.scaler.inverse_transform(self.Y_test.reshape(-1, 1))
 
-        print(f"valpred: {val_predict}")
-        print(f"yval: {Y_val_inv}")
-        val_mse = mean_squared_error(Y_val_inv, val_predict)
-        test_mse = mean_squared_error(Y_test_inv, test_predict)
+        # Compute MSE
+        train_mse = mean_squared_error(Y_train_inv, np.mean(train_predict, axis=1))
+        val_mse = mean_squared_error(Y_val_inv, np.mean(val_predict, axis=1))
+        test_mse = mean_squared_error(Y_test_inv, np.mean(test_predict, axis=1))
 
         print(f"Validation MSE: {val_mse}")
         print(f"Test MSE: {test_mse}")
 
+        # Create a figure
         plt.figure(figsize=(15,5))
-        plt.plot(self.scaler.inverse_transform(self.Y_train), label='Training data')
-        plt.plot([x for x in range(len(self.Y_train), len(self.Y_train)+len(Y_val_inv))], Y_val_inv, label='Validation data')
-        plt.plot([x for x in range(len(self.Y_train)+len(Y_val_inv), len(self.Y_train)+len(Y_val_inv)+len(Y_test_inv))], Y_test_inv, label='Test data')
+        plt.plot(Y_train_inv, label='Training data')
+        plt.plot([x for x in range(len(self.Y_train), len(self.Y_train)+len(Y_val_inv))], Y_val_inv, label='Testing Data')
+        plt.plot([x for x in range(len(self.Y_train)+len(Y_val_inv), len(self.Y_train)+len(Y_val_inv)+len(Y_test_inv))], Y_test_inv, label='Forecasting Data')
 
-        plt.plot([x for x in range(self.look_back,len(train_predict)+self.look_back)], train_predict, label='Training predictions')
-        plt.plot([x for x in range(len(train_predict)+self.look_back,len(train_predict)+len(val_predict)+self.look_back)], val_predict, label='Validation predictions')
-        plt.plot([x for x in range(len(train_predict)+len(val_predict)+self.look_back,len(self.Y_train)+len(Y_val_inv)+len(test_predict)+self.look_back)], test_predict, label='Test predictions')
+        # Since our predictions are for multiple steps ahead, we should take the mean for the plot
+        plt.plot(np.mean(train_predict, axis=1), label='Training predictions')
+        plt.plot([x for x in range(len(train_predict), len(train_predict)+len(val_predict))], np.mean(val_predict, axis=1), label='Testing predictions')
+        plt.plot([x for x in range(len(train_predict)+len(val_predict), len(self.Y_train)+len(Y_val_inv)+len(test_predict))], np.mean(test_predict, axis=1), label='Forecasting predictions')
 
         plt.legend()
 
@@ -108,27 +120,25 @@ class LSTMModel:
         plt.ylabel("Values")
         plt.savefig(image_path)
         plt.show()
-        return val_mse, test_mse, image_path
 
+        return train_mse, val_mse, test_mse, image_path
 
-
-
-    
     def run(self):
-        """
-        Run the main steps.
-        Returns:
-        None
-        """
-        self.split_data()
+        # Prepare the data
+        self.split_data()  # Split data first
+        self.X, self.Y = self.create_dataset()  # Create dataset after splitting
         self.reshape_data()
-        hyper = self.train()
-        val_mse, test_mse, image_path = self.predict_and_plot()
-        return hyper, val_mse, test_mse, image_path
+
+        # Train the model and get the best hyperparameters
+        best_params = self.training()
+
+        # Predict and plot the data
+        train_mse, val_mse, test_mse, image_path = self.predict_and_plot()
+
+        return best_params, train_mse, val_mse, test_mse, image_path
 
 
 if __name__ == "__main__":
-    import argparse
     parser = argparse.ArgumentParser(description="Train data on LSTM")
     parser.add_argument("--data", type=str, required=True, help="Path to filtered AMF data")
     # parser.add_argument("--metric", type=str, required=True, help="Metric name to filter on. Leave empty for all metrics.")
