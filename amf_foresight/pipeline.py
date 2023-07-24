@@ -139,7 +139,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     
-    if not any([args.download, args.process, args.generate, args.train, args.forecast]):
+    if not any([args.download, args.process, args.generate, args.train]):
         parser.error("One of --download, --process, --generate, --train must be provided.")
     if args.download and not args.chunks:
         parser.error("--download requires --chunks.")
