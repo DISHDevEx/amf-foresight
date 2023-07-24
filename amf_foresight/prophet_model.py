@@ -14,7 +14,7 @@ class ProphetModel:
         Initialization method for the ProphetModel class.
         This method loads the dataset and renames the columns.
         """
-        self.df = dataframe
+        self.df = dataframe[['date_col', 'values']]
         self.metric = metric
         self.df.rename(columns={'date_col': 'ds', 'values': 'y'}, inplace=True)
         self.model = None
@@ -83,9 +83,10 @@ class ProphetModel:
         self.fit()
         self.predict()
         mse = self.evaluate()
-        return mse
+        forecasted_values, forecast_mse = self.evaluate_forecast()
+        image_path = self.plot()
+        return mse, forecasted_values, forecast_mse, image_path
     
-
     def plot(self):
         """
         Plots the model's predictions and its forecast using Prophet's built-in plot method.
