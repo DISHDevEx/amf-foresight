@@ -6,6 +6,7 @@ from setup_logger import setup_logger
 from feature_engineering import FeatureEngineer
 from arima import ARIMAModel
 from autoregression import AutoRegressionModel
+from lstm import LSTMModel
 from utils import Utils
 import argparse
 import logging
@@ -33,6 +34,7 @@ class Orchestrator:
         logging.info("Preprocessing Data..")
         raw = self.processor.run(args)
         processed = self.feature_engineer.value_modifier(raw, args.type)
+        self.feature_engineer.plot(processed, args)
         logging.info("Preprocessed Data.")
         return processed
     
@@ -43,19 +45,24 @@ class Orchestrator:
         if self.selected_model == 'ARIMA':
             self.model = ARIMAModel(self.data, args.metric)
             logging.info(f"Tuning hyperparamers..")
-            hyper, mse = self.model.run()
+            hyper, mse, forecasted_values, forecast_mse, image_path = self.model.run()
             logging.info(f"Best hyperparameters for this model: {hyper} Test MSE: {mse}")
+            logging.info(f"Forecasted Values {forecasted_values} Forecast MSE: {forecast_mse}")
         elif self.selected_model == 'PROPHET':
             self.model = ProphetModel(self.data, args.metric)
-            mse = self.model.run()
+            mse, forecasted_values, forecast_mse, image_path = self.model.run()
             logging.info(f"Test MSE: {mse}")
-
+            logging.info(f"Forecasted Values {forecasted_values} Forecast MSE: {forecast_mse}")
+        elif self.selected_model == 'LSTM':
+            self.model = LSTMModel(self.data)
+            hyper, mse, forecast_mse, image_path = self.model.run()
+            logging.info(f"Test MSE: {mse} Forecast MSE: {forecast_mse}")       
+        logging.info(f"(Locally) Saved Plot: {image_path}")
+        self.utils.upload_file(image_path, image_path)
         if not os.path.exists("models"):
             logging.info(f"Creating folder: models")
             os.makedirs("models")
-
         model_file_path = "models/" + self.selected_model.lower() + ";params:" + str(hyper) + ";time:" + datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
-
         with open(model_file_path, 'wb') as model_file:
             pickle.dump(self.model.model_fit, model_file)
         self.utils.upload_file(model_file_path, model_file_path)
@@ -93,12 +100,6 @@ class Orchestrator:
             else:
                 self.data = pd.read_parquet(args.data)
             self.train(args)
-        if args.forecast:
-            forecasted_values, mse = self.model.evaluate_forecast()
-            image_path = self.model.plot()
-            logging.info(f"Forecasted values: {forecasted_values}, Forecast MSE: {mse}")
-            logging.info(f"(Locally) Saved Plot: {image_path}")
-            self.utils.upload_file(image_path, image_path)
          
             
             
@@ -119,7 +120,6 @@ if __name__ == "__main__":
     parser.add_argument("--process", action='store_true', help="Include this flag to process chunks into JSON format. --process requires --chunks, --jsons, --start, and --end.")
     parser.add_argument("--generate", action='store_true', help="Include this flag to generate the data frame and save the data as a paraquet file. --generate requires --jsons and --level.")
     parser.add_argument("--train", action='store_true', help="Include this flag to train your data.")
-    parser.add_argument("--forecast", action='store_true', help="Include plot your original data and forecasted data")
     
     
     parser.add_argument("--chunks", type=str, help="Path where the chunks are/should be downloaded. The chunks contain the raw data from the AMF.")
@@ -149,8 +149,6 @@ if __name__ == "__main__":
         parser.error("--generate requires --jsons, --parquet, --type and --level.")
     if args.train and not ((all([args.generate, args.model])) or (all([args.data, args.model]))):
         parser.error("--train requires --data and --model or --generate and --model")
-    if args.forecast and not all([args.train, args.steps]):
-        parser.error("--forecast requires --train and --steps")
        
     orchestra = Orchestrator()
     orchestra.run(args)
