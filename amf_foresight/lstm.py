@@ -23,6 +23,9 @@ class LSTMModel:
         self.scaler = MinMaxScaler(feature_range=(0, 1))
         self.df = df[['date_col', 'values']]
         self.df.set_index('date_col', inplace=True)
+        self.original_timestamps = self.df.index.to_list()
+        self.original_timestamps = [pd.Timestamp(x).to_pydatetime() for x in self.original_timestamps]
+        self.original_data = self.df['values'].tolist()
         self.train = None
         self.val = None
         self.test = None
@@ -34,10 +37,12 @@ class LSTMModel:
 
         # Scale the data
         self.scaler.fit(data[:train_size])
-        data = self.scaler.transform(data)
+        transformed_data = self.scaler.transform(data)
 
         # Split the data
-        self.train, self.val, self.test = data[:train_size], data[train_size:train_size+val_size], data[train_size+val_size:]
+        self.train, self.val, self.test = transformed_data[:train_size], transformed_data[train_size:train_size+val_size], transformed_data[train_size+val_size:]
+        self.train_time, self.val_time, self.test_time = self.original_timestamps[:train_size], self.original_timestamps[train_size:train_size+val_size], self.original_timestamps[train_size+val_size:]
+        self.train_original, self.val_original, self.test_original = self.original_data[:train_size], self.original_data[train_size:train_size+val_size], self.original_data[train_size+val_size:]
 
     def create_dataset(self):
         data_parts = [self.train, self.val, self.test]
@@ -96,20 +101,18 @@ class LSTMModel:
         train_mse = mean_squared_error(Y_train_inv, np.mean(train_predict, axis=1))
         val_mse = mean_squared_error(Y_val_inv, np.mean(val_predict, axis=1))
         test_mse = mean_squared_error(Y_test_inv, np.mean(test_predict, axis=1))
-
-        print(f"Validation MSE: {val_mse}")
-        print(f"Test MSE: {test_mse}")
-
+ 
         # Create a figure
         plt.figure(figsize=(15,5))
-        plt.plot(Y_train_inv, label='Training data')
-        plt.plot([x for x in range(len(self.Y_train), len(self.Y_train)+len(Y_val_inv))], Y_val_inv, label='Testing Data')
-        plt.plot([x for x in range(len(self.Y_train)+len(Y_val_inv), len(self.Y_train)+len(Y_val_inv)+len(Y_test_inv))], Y_test_inv, label='Forecasting Data')
+        
+        plt.plot(self.train_time, self.train_original, label='Training data')
+        plt.plot(self.val_time, self.val_original, label='Testing Data')
+        plt.plot(self.test_time, self.test_original, label='Forecasting Data')
+            
+        plt.plot(self.train_time[self.look_back:len(train_predict)+self.look_back+1], np.mean(train_predict, axis=1), label='Training predictions')
+        plt.plot(self.val_time[self.look_back:len(val_predict)+self.look_back+1], np.mean(val_predict, axis=1), label='Testing predictions')
+        plt.plot(self.test_time[self.look_back:len(test_predict)+self.look_back+1], np.mean(test_predict, axis=1), label='Forecasting predictions')
 
-        # Since our predictions are for multiple steps ahead, we should take the mean for the plot
-        plt.plot(np.mean(train_predict, axis=1), label='Training predictions')
-        plt.plot([x for x in range(len(train_predict), len(train_predict)+len(val_predict))], np.mean(val_predict, axis=1), label='Testing predictions')
-        plt.plot([x for x in range(len(train_predict)+len(val_predict), len(self.Y_train)+len(Y_val_inv)+len(test_predict))], np.mean(test_predict, axis=1), label='Forecasting predictions')
 
         plt.legend()
 
