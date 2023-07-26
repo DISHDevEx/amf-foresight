@@ -19,10 +19,19 @@ setup_logger()
 
 class Orchestrator:
     """
-    Orchestrator Class:
-    A class that handles the orchestration of preprocessing, training and evaluating AMF data.
+    Preprocess the data for modeling.
+
+    :param args: Command line arguments parsed by argparse.ArgumentParser.
+    :return: processed pandas dataframe
     """
+    
     def __init__(self):
+        """
+        Initialize the Orchestrator class.
+
+        :param None
+        :return: None
+        """
         self.args = args
         self.processor = AMFDataProcessor()
         self.feature_engineer = FeatureEngineer()
@@ -32,6 +41,12 @@ class Orchestrator:
         self.model = None
     
     def preprocessing(self, args):
+        """
+        Preprocess the data for modeling.
+
+        :param args: Command line arguments parsed by argparse.ArgumentParser.
+        :return: processed pandas dataframe
+        """
         logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Preprocessing Data..")
         raw = self.processor.run(args)
         processed = self.feature_engineer.value_modifier(raw, args.type)
@@ -40,6 +55,12 @@ class Orchestrator:
         return processed
     
     def train(self, args):
+        """
+        Train the model based on the selected model type in args.
+
+        :param args: Command line arguments parsed by argparse.ArgumentParser.
+        :return: None
+        """
         self.selected_model = args.model
         logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Selected model is {self.selected_model}")
         hyper = None
@@ -69,6 +90,12 @@ class Orchestrator:
         self.utils.upload_file(model_file_path, model_file_path)
     
     def save(self, processed):
+        """
+        Save the processed data to a file and log the data summary.
+
+        :param processed: Processed pandas dataframe
+        :return: File path where the data is saved
+        """
         summary_str = processed.describe().to_string().replace('\n', ' | ')
         head_str = processed.head().to_string().replace('\n', ' | ')
         logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Summary of Requested data:")
@@ -88,8 +115,10 @@ class Orchestrator:
      
     def run(self, args):
         """
-        This function runs the entire pipeline 
-        :param
+        Run the entire pipeline. Preprocess, save and train based on the command line arguments.
+
+        :param args: Command line arguments parsed by argparse.ArgumentParser.
+        :return: None
         """
         time1 = time.time()
         processed = None
@@ -104,22 +133,11 @@ class Orchestrator:
             else:
                 self.data = pd.read_parquet(args.data)
             self.train(args)
-         
-            
-            
-            
-            
-        
-        
-        
-        
-        
-    
+             
     
 if __name__ == "__main__":    
-    
-    
     parser = argparse.ArgumentParser(description="Process some AMF data.")
+    # Define the arguments that can be passed to the script
     parser.add_argument("--download", action='store_true', help="Include this flag to download chunks. --download does not require any argument")
     parser.add_argument("--process", action='store_true', help="Include this flag to process chunks into JSON format. --process requires --start, and --end.")
     parser.add_argument("--generate", action='store_true', help="Include this flag to generate the data frame and save the data as a paraquet file. --generate requires --metric, --type and --level.")
@@ -133,22 +151,24 @@ if __name__ == "__main__":
     parser.add_argument("--metric", type=str, help="Metric name to filter on. Leave empty for all metrics.")
     parser.add_argument("--pod", type=str, help="Pod name to filter on. Leave empty for all pods.")    
     parser.add_argument("--model", type=str, help="Model you would like to use.")
-    parser.add_argument("--steps", type=int, help="Number of timesteps you want to forecast")
     
-    
+    # Parse the arguments
     args = parser.parse_args()
     
-    
+    # Check the arguments for correctness and completeness
     if not any([args.download, args.process, args.generate, args.train]):
         parser.error("One of --download, --process, --generate, --train must be provided.")
     if args.process and not all([args.start, args.end]):
         parser.error("--process requires --start and --end")
     if args.generate and not all([args.level, args.type, args.metric]):
         parser.error("--generate requires --metric, --type and --level.")
-    if args.train and not ((all([args.generate, args.model])) or (all([args.data, args.model]))):
-        parser.error("--train requires --data and --model or --generate and --model")
-       
+    if args.train and not ((all([args.process, args.generate, args.model])) or (all([args.data, args.model]))):
+        parser.error("--train requires --data and --model or --process, --generate and --model")
+    
+    # Instantiate the Orchestrator class
     orchestra = Orchestrator()
+    
+    # Run the orchestration process
     orchestra.run(args)
     
     

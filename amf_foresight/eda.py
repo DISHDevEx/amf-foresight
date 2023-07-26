@@ -110,7 +110,7 @@ class EDA:
     
     def plotly_plot(self, data, metric):
         """
-        Matplotlib plot for data based on a metric name
+        Plotly plot for data based on a metric name
         :param data: A Pandas DataFrame
         :param metric: The metric to plot
         """
@@ -145,7 +145,6 @@ class EDA:
     def matplot_plot(self, data, metric):
         """
         Matplotlib plot for data based on a metric name
-        :param data: A Pandas DataFrame
         :param metric: The metric to plot
         """
         time1 = time.time()

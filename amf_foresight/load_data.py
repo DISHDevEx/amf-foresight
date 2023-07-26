@@ -24,14 +24,23 @@ import inspect
 setup_logger()
 
 class AMFDataProcessor:
+    """
+    A class to process AMF data. It downloads chunks of data, processes it and generates a data frame 
+    from the processed data. It also provides functionalities to plot data and get data for specific 
+    conditions.
+    """
     
     def __init__(self):
+        """
+        Initialize AMFDataProcessor and create an instance of Utils class.
+        """
         self.utils = Utils()
     
     def clear_folders(self, folders):
         """
-        This function creates a folder if it does not exist and clears all the files in the folders passed in
-        :param folders: list of folders 
+        Clear all files in the given folders. If a folder does not exist, create it.
+
+        :param folders: List of folders to be cleared.
         """
         for folder in folders:
             if os.path.exists(folder):
@@ -47,8 +56,9 @@ class AMFDataProcessor:
     
     def run(self, args):
         """
-        This function runs the entire pipeline and returns a dataframe
-        :param
+        The main function to download, process and generate dataframe. 
+
+        :param args: Arguments passed through command line
         """
         time1 = time.time()
         if args.download:
@@ -74,6 +84,12 @@ class AMFDataProcessor:
             return panda
     
     def plot(self, df, args):
+        """
+        Plot the dataframe and save the plot as a png file.
+
+        :param df: The dataframe to plot.
+        :param args: The arguments passed from command line.
+        """
         fig = px.line(df, x='date_col', y='values', color='container')
         fig.update_layout(
             title=args.metric,
@@ -93,8 +109,12 @@ class AMFDataProcessor:
     
     def get_data(self, directory, container_level="all", metric=None, pod=None):
         """
-        This function takes in the directory of JSON files and returns a combined pandas dataframes
-        :param directory: Path to JSON files
+        Get data from the directory, transform the dataframe and convert it into pandas dataframe.
+
+        :param directory: Directory from where to fetch data.
+        :param container_level: Level of the container. Default is "all".
+        :param metric: The metric for which data is to be fetched. Default is None.
+        :param pod: The pod for which data is to be fetched. Default is None.
         """
         spark_dataframes = self.get_dataframes(directory, container_level)
         spark_dataframe = self.transform_dataframe(spark_dataframes, metric, pod)
@@ -103,8 +123,10 @@ class AMFDataProcessor:
 
     def get_dataframes(self, directory, container_level):
         """
-        This function extracts spark dataframes from a given directory of JSON files
-        :param directory: Path to JSON files
+        Get dataframes from all the json files in the directory.
+
+        :param directory: Directory from where to fetch data.
+        :param container_level: Level of the container.
         """
         flag = False
         for i, filename in enumerate(os.listdir(directory)):
@@ -121,10 +143,11 @@ class AMFDataProcessor:
 
     def transform_dataframe(self, amf_data, metric_name= None, pod_name=None):
         """
-        This function tranforms the timestamps and filters based on metric_name and pod_name
-        :param amf_data: AMF Data
-        :param metric_name: Metric name to filter on
-        :param pod_name: Pod ID to filter on
+        Filter the dataframe based on given metric_name and pod_name. 
+
+        :param amf_data: The AMF data to be transformed.
+        :param metric_name: The metric name to filter on. Default is None.
+        :param pod_name: The pod name to filter on. Default is None.
         """
         amf_data = amf_data.withColumn("date_col", F.expr("transform(timestamps, x -> from_unixtime(x/1000))"))
         if metric_name:
@@ -135,8 +158,9 @@ class AMFDataProcessor:
     
     def get_all_data(self, json_object_path):
         """
-        This function grabs all data without filtering for EDA purposes 
-        :param json_object_path: Path to JSON
+        Get all data from a given json object path.
+
+        :param json_object_path: The path of the json object.
         """
         obj = Nested_Json_Connector(json_object_path)
         err, data = obj.read_nested_json()
@@ -145,8 +169,9 @@ class AMFDataProcessor:
     
     def get_all_amf_data(self, json_object_path):
         """
-        This function grabs all data without filtering for EDA purposes 
-        :param json_object_path: Path to JSON
+        Get all AMF data from a given json object path.
+
+        :param json_object_path: The path of the json object.
         """
         obj = Nested_Json_Connector(json_object_path)
         err, data = obj.read_nested_json()
@@ -155,8 +180,10 @@ class AMFDataProcessor:
     
     def get_amf_data(self, json_object_path, container_level="all"):
         """
-        This function extracts the dataframe from JSON and filters out AMF data with a container name
-        :param json_object_path: Path to JSON
+        Get AMF data from a given json object path and filter data based on the container level.
+
+        :param json_object_path: The path of the json object.
+        :param container_level: Level of the container. Default is "all".
         """
         obj = Nested_Json_Connector(json_object_path, setup = "32gb")
         err, data = obj.read_nested_json()
@@ -176,8 +203,9 @@ class AMFDataProcessor:
 
     def get_min_value(self, amf_data):
         """
-        This function gets the value of a metric that is used to support the application
-        :param data: AMF Data
+        Get the minimum value from the given AMF data.
+
+        :param amf_data: The AMF data to find the minimum value from.
         """
         min_vals = amf_data.filter(F.col("metric_container").isNull() & F.col('metric_image').isNotNull()).select("values").rdd.flatMap(lambda x: x).collect()
         min_val = None
@@ -187,8 +215,10 @@ class AMFDataProcessor:
 
     def get_values(self, data, container_level):
         """
-        This function extracts timestamps and values of a spark dataframe returns a pandas dataframe
-        :param data: AMF Data
+        Get values from the data and convert it into a pandas dataframe. 
+
+        :param data: The data to get values from.
+        :param container_level: Level of the container.
         """
         min_val = None
         max_val = None
@@ -221,8 +251,12 @@ class AMFDataProcessor:
 
     def run_go(self, folder_path, destination_path, given_min_time_str, given_max_time_str):
         """
-        This function processes the chunks which are within the requested time interval
-        :param data: AMF Data
+        Run Go program to process chunks based on given time interval.
+
+        :param folder_path: Path of the folder where the chunks are stored.
+        :param destination_path: Path of the folder where the processed json files are to be stored.
+        :param given_min_time_str: Start time of the data extraction in string format.
+        :param given_max_time_str: End time of the data extraction in string format.
         """
         given_min_time_dt = datetime.strptime(given_min_time_str, '%Y-%m-%d %H:%M:%S')
         given_max_time_dt = datetime.strptime(given_max_time_str, '%Y-%m-%d %H:%M:%S')
@@ -262,8 +296,9 @@ class AMFDataProcessor:
                     
     def download_chunks(self, local_path):
         """
-        This function takes in the path to save the chunks and saves the raw data in the given path
-        :param
+        Download chunks of raw data and save it to the given local path.
+
+        :param local_path: The local path where chunks of raw data are to be saved.
         """
         aws_command = f"{os.environ.get('s3')} {local_path} --recursive"
         result = subprocess.run(aws_command, shell=True, check=True)
@@ -271,7 +306,9 @@ class AMFDataProcessor:
     
                 
 if __name__ == "__main__":
-    
+    """
+    Entry point to parse command line arguments and run AMFDataProcessor.
+    """
     parser = argparse.ArgumentParser(description="Process some AMF data.")
     parser.add_argument("--download", action='store_true', help="Include this flag to download chunks. --download does not require any argument")
     parser.add_argument("--process", action='store_true', help="Include this flag to process chunks into JSON format. --process requires --start, and --end.")

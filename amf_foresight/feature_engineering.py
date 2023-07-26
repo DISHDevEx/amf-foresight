@@ -13,14 +13,24 @@ from utils import Utils
 setup_logger()
 
 class FeatureEngineer:
-        
+    """
+    A class to carry out feature engineering on AMF data. This class provides methods to read the data, 
+    modify its values based on the type of metric, and plot the processed data. It also enables fetching 
+    the processed data.
+    """
+    
     def __init__(self):
+        """
+        Initialize FeatureEngineer and create an instance of Utils class.
+        """
         self.utils = Utils()
         
     def get_data(self, args):
         """
-        This function orchestrases the feature engineering process when used as a script
-        :param args: arguments passed to the script
+        Orchestrates the feature engineering process.
+
+        :param args: Arguments passed to the script.
+        :return: DataFrame after the feature engineering process.
         """
         panda = self.read_data(args.data)
         data = self.value_modifier(panda, args.type)
@@ -28,16 +38,21 @@ class FeatureEngineer:
     
     def read_data(self, path):
         """
-        This function takes in a path to a CSV of filtered AMF Data and returns a dataframe
-        :param directory: Path to CSV with filtered AMF Data
+        Reads a parquet file of filtered AMF data and returns a DataFrame.
+
+        :param path: Path to parquet file with filtered AMF Data.
+        :return: DataFrame from the file.
         """
         data = pd.read_parquet(path)
         return data
     
     def value_modifier(self, data, metric):
         """
-        This function takes in a pandas dataframe and modifies the values based on the type of metric
-        :param directory: Path to JSON files
+        Modifies the values in a DataFrame based on the type of metric.
+
+        :param data: DataFrame with AMF data.
+        :param metric: Type of feature engineering to be performed.
+        :return: DataFrame with modified values.
         """
         logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Feature Engineering Data")
         logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Feature Type={metric}")
@@ -56,6 +71,12 @@ class FeatureEngineer:
         return data
     
     def plot(self, df, args):
+        """
+        Plots the DataFrame and saves the plot locally and in cloud storage.
+
+        :param df: DataFrame to be plotted.
+        :param args: Arguments related to the plot.
+        """
         logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Plotting dataframe")
         fig = px.line(df, x='date_col', y='values', color='container')
         fig.update_layout(
@@ -73,13 +94,19 @@ class FeatureEngineer:
         self.utils.upload_file(image_path, image_path)
             
 
-if __name__ == "__main__":    
+if __name__ == "__main__": 
+    """
+    :param args: Command line arguments parsed by argparse.ArgumentParser. It should include:
+        data: The path to the filtered AMF data.
+        type: The type of feature engineering to be applied.
+
+    :return: None
+    """
     parser = argparse.ArgumentParser(description="Feature Engineer AMF data.")
     parser.add_argument("--data", type=str, required=False, help="Path to filtered AMF data")
     parser.add_argument("--type", type=str, required=False, help="Type of Feature Engineering")
     args = parser.parse_args()
     
-    sys.stdout = open('logs/console_output.log', 'w')
     feature_engineer = FeatureEngineer()
     data = feature_engineer.get_data(args)
     

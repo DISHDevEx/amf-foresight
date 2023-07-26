@@ -16,8 +16,19 @@ import matplotlib.pyplot as plt
 
 
 class LSTMModel:
+    """
+    Class to create a LSTM based model for time-series prediction.
 
+    :param df: DataFrame containing 'date_col' and 'values' columns.
+    :param metric: The name of the metric to predict.
+    :param look_back: How many previous time-steps to include in the input features.
+    :param steps_ahead: How many time-steps in the future to predict.
+    """
+    
     def __init__(self, df, metric, look_back=10, steps_ahead=1):
+        """
+        Initialize LSTM model with dataset, look back period, steps ahead and metric.
+        """
         self.look_back = look_back
         self.steps_ahead = steps_ahead
         self.metric = metric
@@ -32,6 +43,9 @@ class LSTMModel:
         self.test = None
 
     def split_data(self):
+        """
+        Split data into training, test and forecast datasets.
+        """
         data = self.df.values
         train_size = int(len(data) * 0.7)
         val_size = int(len(data) * 0.2)
@@ -44,6 +58,12 @@ class LSTMModel:
         self.train_original, self.val_original, self.test_original = self.original_data[:train_size], self.original_data[train_size:train_size+val_size], self.original_data[train_size+val_size:]
 
     def create_dataset(self):
+        """
+        Create input/output datasets for model training.
+
+        :return: X_parts: list of input sequences for train, validation, and test datasets
+                 Y_parts: list of output sequences for train, validation, and test datasets
+        """
         data_parts = [self.train, self.val, self.test]
         X_parts, Y_parts = [], []
         for part in data_parts:
@@ -56,10 +76,19 @@ class LSTMModel:
         return X_parts, Y_parts
 
     def reshape_data(self):
+        """
+        Reshape data to be suitable for LSTM.
+        """
         self.X_train, self.X_val, self.X_test = [np.reshape(x, (x.shape[0], 1, x.shape[1])) for x in self.X]
         self.Y_train, self.Y_val, self.Y_test = self.Y  
 
     def training(self):
+        """
+        Train the LSTM model using Grid Search for hyperparameter tuning.
+
+        :return: Best parameters from the hyperparameter tuning
+        """
+
         def create_model(neurons=50, optimizer='adam'):
             model = Sequential()
             model.add(LSTM(neurons, input_shape=(1, self.look_back)))
@@ -82,12 +111,18 @@ class LSTMModel:
         
     
     def predict_and_plot(self):
-        # Predict
+        """
+        Predict and plot the predicted data along with the original data.
+
+        :return: train_mse: Training mean squared error
+                 val_mse: Validation mean squared error
+                 test_mse: Test mean squared error
+                 image_path: Path of the plotted image
+        """
         train_predict = self.model_fit.predict(self.X_train)
         val_predict = self.model_fit.predict(self.X_val)
         test_predict = self.model_fit.predict(self.X_test)
 
-        # Inverse scaling
         train_predict = self.scaler.inverse_transform(train_predict.reshape(-1, 1))
         val_predict = self.scaler.inverse_transform(val_predict.reshape(-1, 1))
         test_predict = self.scaler.inverse_transform(test_predict.reshape(-1, 1))
@@ -96,7 +131,6 @@ class LSTMModel:
         Y_val_inv = self.scaler.inverse_transform(self.Y_val.reshape(-1, 1))
         Y_test_inv = self.scaler.inverse_transform(self.Y_test.reshape(-1, 1))
 
-        # Compute MSE
         train_mse = mean_squared_error(Y_train_inv, np.mean(train_predict, axis=1))
         val_mse = mean_squared_error(Y_val_inv, np.mean(val_predict, axis=1))
         test_mse = mean_squared_error(Y_test_inv, np.mean(test_predict, axis=1))
@@ -104,7 +138,6 @@ class LSTMModel:
         val_predict_flat = val_predict.flatten()
         test_predict_flat = test_predict.flatten()
         
-        # Create a figure
         plt.figure(figsize=(15,5))
         plt.title(str(self.metric))
         
@@ -129,6 +162,16 @@ class LSTMModel:
         return train_mse, val_mse, test_mse, image_path
 
     def run(self):
+        """
+        Run all the steps from data split, reshape, training, and prediction.
+
+        :return: best_params: Best parameters from the hyperparameter tuning
+                 train_mse: Training mean squared error
+                 val_mse: Validation mean squared error
+                 test_mse: Test mean squared error
+                 image_path: Path of the plotted image
+        """
+
         self.split_data()  
         self.X, self.Y = self.create_dataset() 
         self.reshape_data()
@@ -141,6 +184,10 @@ class LSTMModel:
 
 
 if __name__ == "__main__":
+    """
+    :param --data: Path to the dataset
+    :param --metric: Metric name to filter on.
+    """
     parser = argparse.ArgumentParser(description="Train data on LSTM")
     parser.add_argument("--data", type=str, required=True, help="Path to filtered AMF data")
     parser.add_argument("--metric", type=str, required=True, help="Metric name to filter on. Leave empty for all metrics.")

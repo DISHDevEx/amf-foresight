@@ -8,11 +8,19 @@ import time
 from datetime import datetime
 
 class ProphetModel:
+    """
+    Class to create a model for time-series prediction using Facebook Prophet.
+
+    :param dataframe: DataFrame containing 'date_col' and 'values' columns.
+    :param metric: The name of the metric to predict.
+    """
 
     def __init__(self, dataframe, metric):
         """
-        Initialization method for the ProphetModel class.
-        This method loads the dataset and renames the columns.
+        Initialize Prophet model with dataset and metric.
+
+        :param dataframe: DataFrame to be used for the model.
+        :param metric: The name of the metric to be predicted.
         """
         self.df = dataframe[['date_col', 'values']]
         self.metric = metric
@@ -23,7 +31,7 @@ class ProphetModel:
 
     def train_test_split(self):
         """
-        Splits the dataset into training, testing and forecasting datasets.
+        Split the data into training, validation, and test datasets.
         """
         train_size = int(0.7 * len(self.df))
         test_size = int(0.2 * len(self.df))
@@ -35,29 +43,31 @@ class ProphetModel:
     
     def fit(self):
         """
-        Fits the Prophet model on the training dataset.
+        Train the Prophet model on the training dataset.
         """
         self.model = Prophet()
         self.model_fit = self.model.fit(self.train_df)
     
     def predict(self):
         """
-        Predicts on the testing dataset using the trained Prophet model.
+        Use the trained Prophet model to predict the 'y' values for the test dataset.
         """
         self.predictions = self.model_fit.predict(self.test_df)
 
     def evaluate(self):
         """
-        Evaluates the model's predictions on the testing dataset.
-        Returns the mean squared error of the model's predictions.
+        Evaluate the trained Prophet model using mean squared error (MSE).
+        
+        :return: MSE of the model's predictions.
         """
         mse = mean_squared_error(self.test_df['y'], self.predictions['yhat'])
         return mse
 
     def forecast(self):
         """
-        Creates a future DataFrame with the same timestamps as in self.forecast_eval
-        and forecasts the target variable for these dates.
+        Generate forecasts for future dates specified in 'forecast_eval' DataFrame.
+
+        :return: DataFrame with forecasted 'y' values.
         """
         future = self.forecast_eval[['ds']]
         self.forecast_values = self.model_fit.predict(future)
@@ -65,9 +75,11 @@ class ProphetModel:
     
     def evaluate_forecast(self):
         """
-        Evaluates the model's forecast on self.forecast_eval.
-        Returns the mean squared error of the model's forecast.
+        Evaluate the forecasted values against actual values in 'forecast_eval' DataFrame using MSE.
+
+        :return: DataFrame with forecasted 'y' values and MSE of the forecast.
         """
+
         future = self.forecast_eval[['ds']]
         self.forecast_values = self.model_fit.predict(future)
         mse = mean_squared_error(self.forecast_eval['y'], self.forecast_values['yhat'])
@@ -75,9 +87,9 @@ class ProphetModel:
 
     def run(self):
         """
-        This method encapsulates the entire workflow of the model:
-        data split, model fitting, prediction, evaluation, and forecasting.
-        Returns the mean squared errors of the model's predictions and its forecast.
+        Execute all steps in the model pipeline: data split, model fitting, prediction, evaluation, and forecasting.
+        
+        :return: MSE of model's predictions, DataFrame with forecasted 'y' values, MSE of the forecast, and path to the plot.
         """
         self.train_test_split()
         self.fit()
@@ -89,27 +101,17 @@ class ProphetModel:
     
     def plot(self):
         """
-        Plots the model's predictions and its forecast using Prophet's built-in plot method.
+        Plot the training, testing, predicted, and forecasted data.
+
+        :return: Path to the saved plot.
         """
-        # fig1 = self.model.plot(self.forecast)
         plt.figure(figsize=(10, 8))
-        
-        # Plotting training data
         plt.plot(self.train_df['ds'], self.train_df['y'], 'b-', label='Train')
-
-        # Plotting test data
         plt.plot(self.test_df['ds'], self.test_df['y'], 'r-', label='Test')
-
-        # Plotting test predictions
         plt.plot(self.test_df['ds'], self.predictions['yhat'], 'g-', label='Test prediction')
-
-        # Plotting forecasted values
         plt.plot(self.forecast_values['ds'], self.forecast_values['yhat'], 'k-', label='Forecast')
-
-        # Plotting actual values in forecast set
         plt.plot(self.forecast_eval['ds'], self.forecast_eval['y'], 'm-', label='Actual Forecast')
-
-        plt.legend()  # Display the legend
+        plt.legend()
         plt.legend()
         if not os.path.exists("assets"):
             os.makedirs("assets")
@@ -122,6 +124,10 @@ class ProphetModel:
         return image_path
 
 if __name__ == "__main__":
+    """
+    :param --data: Path to the dataset.
+    :param --metric: Name of the metric to predict.
+    """
     import argparse
     parser = argparse.ArgumentParser(description="Train data on Prophet")
     parser.add_argument("--data", type=str, required=True, help="Path to filtered AMF data")

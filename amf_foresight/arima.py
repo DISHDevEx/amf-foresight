@@ -10,9 +10,18 @@ import matplotlib.pyplot as plt
 
 class ARIMAModel:
     """
-    This class implements ARIMA model for time series prediction.
+    A class that creates an ARIMA model for time series forecasting.
+
+    :param data: A DataFrame object that contains the data.
+    :param metric: The name of the metric to predict.
     """
     def __init__(self, data, metric):
+        """
+        Initialize the ARIMAModel class with data and a metric.
+
+        :param data: A DataFrame object that contains the data.
+        :param metric: The name of the metric to predict.
+        """
         self.dataframe = data
         self.metric = metric
         self.values = self.dataframe['values'].values
@@ -23,7 +32,7 @@ class ARIMAModel:
     
     def train_test_split(self):
         """
-        Splits the data into training, test, and forecast evaluation sets.
+        Splits the data into a training set, a test set, and a forecasting evaluation set.
         """
         train_size = int(len(self.values) * (1 - self.test_size - self.forecast_eval_size))
         test_size = int(len(self.values) * (1 - self.forecast_eval_size))
@@ -32,7 +41,9 @@ class ARIMAModel:
     
     def fit(self, order):
         """
-        Fits an ARIMA model with the given order.
+        Fits an ARIMA model to the training data with a given order.
+
+        :param order: A tuple specifying the order of the ARIMA model.
         """
         self.model = ARIMA(self.train, order=order)
         self.model_fit = self.model.fit()
@@ -40,21 +51,23 @@ class ARIMAModel:
 
     def predict(self):
         """
-        Predicts the test set values.
+        Generates predictions for the test set using the fitted ARIMA model.
         """
         self.predictions = self.model_fit.predict(start=len(self.train), end=len(self.train)+len(self.test)-1)
         return self.predictions
 
     def evaluate(self):
         """
-        Evaluates the model on the test set.
+        Evaluates the model's predictions on the test set using the Mean Squared Error (MSE) metric.
+
+        :return: The Mean Squared Error of the model's predictions on the test set.
         """
         mse = mean_squared_error(self.test, self.predictions)
         return mse
 
     def tune_hyperparameters(self):
         """
-        Tunes hyperparameters for the ARIMA model.
+        Finds the best order of the ARIMA model by testing combinations of hyperparameters and choosing the one with the lowest MSE on the test set.
         """
         p_values = [1, 2]
         d_values = [0, 1]
@@ -76,7 +89,9 @@ class ARIMAModel:
 
     def run(self):
         """
-        Runs the entire ARIMA pipeline.
+        Runs the entire process of the ARIMA model: hyperparameter tuning, model fitting, prediction, evaluation, and forecasting.
+
+        :return: The best order, MSE of the model's predictions, forecasted values, MSE of the forecast, and the path to the plot.
         """
         best_order = self.tune_hyperparameters()
         self.fit(best_order)
@@ -88,7 +103,9 @@ class ARIMAModel:
 
     def forecast(self):
         """
-        Forecasts 'steps' time points ahead.
+        Uses the fitted ARIMA model to generate forecasts for future data points.
+
+        :return: An array of forecasted values.
         """
         if self.model_fit is None:
             raise Exception('The model must be fit before forecasting.')
@@ -98,7 +115,9 @@ class ARIMAModel:
 
     def evaluate_forecast(self):
         """
-        Evaluates the forecast performance.
+        Evaluates the forecasted values against the actual future data using the Mean Squared Error (MSE) metric.
+
+        :return: The forecasted values and the Mean Squared Error of the forecast.
         """
         forecasted_values = self.forecast()
         mse = mean_squared_error(self.forecast_eval, forecasted_values)
@@ -106,7 +125,9 @@ class ARIMAModel:
 
     def plot(self):
         """
-        Plots the training, testing, and forecast data.
+        Creates a plot of the original data, the model's predictions on the test set, and the model's forecast for future data.
+
+        :return: The path to the saved plot.
         """
         plt.figure(figsize=(15, 7))
 
@@ -140,6 +161,10 @@ class ARIMAModel:
         return image_path
 
 if __name__ == "__main__":
+    """
+    :param --data: Path to the dataset.
+    :param --metric: Name of the metric to predict. If left empty, all metrics will be used.
+    """
     parser = argparse.ArgumentParser(description="Feature Engineer AMF data.")
     parser.add_argument("--data", type=str, required=True, help="Path to filtered AMF data")
     parser.add_argument("--metric", type=str, required=True, help="Metric name to filter on. Leave empty for all metrics.")
