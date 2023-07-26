@@ -20,6 +20,7 @@ import argparse
 import subprocess
 import shutil
 import sys
+import inspect
 setup_logger()
 
 class AMFDataProcessor:
@@ -34,7 +35,7 @@ class AMFDataProcessor:
         """
         for folder in folders:
             if os.path.exists(folder):
-                logging.info(f"Clearing files in folder: {folder}")
+                logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Clearing files in folder: {folder}")
                 files = os.listdir(folder)
                 for file in files:
                     file_path = os.path.join(folder, file)
@@ -51,25 +52,25 @@ class AMFDataProcessor:
         """
         time1 = time.time()
         if args.download:
-            logging.info("Downloading chunks..")
-            logging.info(f"Running with arguments for download: chunks={args.chunks}")
-            self.clear_folders([args.chunks])
-            self.download_chunks(args.chunks)
-            logging.info("Downloaded chunks.")
+            logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Downloading chunks..")
+            logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Running with arguments for download: None")
+            self.clear_folders(["chunks"])
+            self.download_chunks("chunks")
+            logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Downloaded chunks.")
 
         if args.process:
-            self.clear_folders([args.jsons])
-            logging.info("Processing chunks..")
-            logging.info(f"Running with arguments for process: chunks={args.chunks}, jsons={args.jsons}, start={args.start}, end={args.end}")
-            self.run_go(args.chunks, args.jsons, args.start, args.end)
-            logging.info("Processed chunks.")
+            self.clear_folders(["jsons"])
+            logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Processing chunks..")
+            logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Running with arguments for process: start={args.start}, end={args.end}")
+            self.run_go("chunks", "jsons", args.start, args.end)
+            logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Processed chunks.")
 
         if args.generate:
-            logging.info("Generating dataframe..")
-            logging.info(f"Running with arguments for generate: jsons={args.jsons}, level={args.level}, metric={args.metric}, pod={args.pod}")
-            spark, panda = self.get_data(args.jsons, args.level, args.metric, args.pod)
-            logging.info("Generated dataframe")
-            logging.info("Plotting dataframe")
+            logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Generating dataframe..")
+            logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Running with arguments for generate: metric={args.metric}, level={args.level}, pod={args.pod}")
+            spark, panda = self.get_data("jsons", args.level, args.metric, args.pod)
+            logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Generated dataframe")
+            logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Plotting dataframe")
             return panda
     
     def plot(self, df, args):
@@ -85,7 +86,7 @@ class AMFDataProcessor:
         image = "plot::" + os.path.basename(__file__) + "::metric:" + str(args.metric) + ";pod:" + str(args.pod) + ";level:" + str(args.level) + ";start:" + args.start + ";end:" + args.end + ".png"
         image_path = os.path.join("assets", image)
         fig.write_image(image_path, width=800, height=600)
-        logging.info(f"(Locally) Saved Plot to {image_path}")
+        logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::(Locally) Saved Plot to {image_path}")
         self.utils.upload_file(image_path, image_path)
         
         
@@ -109,12 +110,12 @@ class AMFDataProcessor:
         for i, filename in enumerate(os.listdir(directory)):
             if os.path.isfile(os.path.join(directory, filename)) and not flag:
                 appended_df = self.get_amf_data(os.path.join(directory, filename), container_level)
-                logging.info(f"Generated Dataframe for: {os.path.join(directory, filename)}")
+                logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Generated Dataframe for: {os.path.join(directory, filename)}")
                 flag = True
             elif flag:
                 if os.path.isfile(os.path.join(directory, filename)):
                     new_df = self.get_amf_data(os.path.join(directory, filename), container_level)
-                    logging.info(f"Generated Dataframe for: {os.path.join(directory, filename)}")
+                    logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Generated Dataframe for: {os.path.join(directory, filename)}")
                     appended_df = appended_df.union(new_df)
         return appended_df
 
@@ -132,14 +133,24 @@ class AMFDataProcessor:
             amf_data = amf_data.filter(F.col("metric_pod").startswith(pod_name))
         return amf_data
     
-    def get_all_data(self, json_object_path, container_level="all"):
+    def get_all_data(self, json_object_path):
         """
         This function grabs all data without filtering for EDA purposes 
         :param json_object_path: Path to JSON
         """
         obj = Nested_Json_Connector(json_object_path)
-        data = data.filter(F.col("metric_namespace") == "openverso")
+        err, data = obj.read_nested_json()
         data = data.filter(F.col('metric_pod').startswith('open5gs'))
+        return data
+    
+    def get_all_amf_data(self, json_object_path):
+        """
+        This function grabs all data without filtering for EDA purposes 
+        :param json_object_path: Path to JSON
+        """
+        obj = Nested_Json_Connector(json_object_path)
+        err, data = obj.read_nested_json()
+        data = data.filter(F.col('metric_pod').startswith('open5gs-amf'))
         return data
     
     def get_amf_data(self, json_object_path, container_level="all"):
@@ -217,7 +228,7 @@ class AMFDataProcessor:
         given_max_time_dt = datetime.strptime(given_max_time_str, '%Y-%m-%d %H:%M:%S')
         given_min_time = int(given_min_time_dt.timestamp() * 1000)
         given_max_time = int(given_max_time_dt.timestamp() * 1000)
-        logging.info(f"Requested time interval: {given_min_time_str} - {given_max_time_str}")
+        logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Requested time interval: {given_min_time_str} - {given_max_time_str}")
         
         for chunk_folder in os.listdir(folder_path):
             chunk_folder_path = os.path.join(folder_path, chunk_folder)
@@ -234,7 +245,7 @@ class AMFDataProcessor:
                     max_time_str = datetime.fromtimestamp(max_time/1000).strftime('%Y-%m-%d %H-%M-%S')
                     file_min_time_str = datetime.fromtimestamp(min_time/1000).strftime('%Y%m%d %H%M%S')
                     file_max_time_str = datetime.fromtimestamp(max_time/1000).strftime('%Y%m%d %H%M%S')
-                    logging.info(f"Selected chunk's time interval: {min_time_str} - {max_time_str}")
+                    logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Selected chunk's time interval: {min_time_str} - {max_time_str}")
                     command = ['./prometheus-tsdb-dump/main','-bucket','open5gs-respons-logs','-prefix','prometheus-metrics/respons-amf-forecaster/'+ str(chunk_folder),'-local-path','tsdb-json','-block','tsdb-json/prometheus-metrics/respons-amf-forecaster/' + str(chunk_folder)]
                     output = subprocess.run(command, capture_output=True)
                     filename = str(file_min_time_str) + "-" + str(file_max_time_str) + '.json'
@@ -244,7 +255,7 @@ class AMFDataProcessor:
                         lines = file.readlines()
                     with open(os.path.join(destination_path, filename), 'w') as file:
                         file.writelines(lines[3:])
-                    logging.info(f"(Locally) Saved JSON to {os.path.join(destination_path, filename)}")
+                    logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::(Locally) Saved JSON to {os.path.join(destination_path, filename)}")
                     self.utils.upload_file(str(os.path.join(destination_path, filename)), str(os.path.join(destination_path, filename)))
                     
                     
@@ -262,28 +273,24 @@ class AMFDataProcessor:
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description="Process some AMF data.")
-    parser.add_argument("--download", action='store_true', help="Include this flag to download chunks. --download requires --chunks.")
-    parser.add_argument("--process", action='store_true', help="Include this flag to process chunks into JSON format. --process requires --chunks, --jsons, --start, and --end.")
-    parser.add_argument("--generate", action='store_true', help="Include this flag to generate the data frame and save the data as a paraquet file. --generate requires --jsons and --level.")
-    parser.add_argument("--chunks", type=str, help="Path where the chunks are/should be downloaded. The chunks contain the raw data from the AMF.")
-    parser.add_argument("--jsons", type=str, help="Path where the processed JSONs are/should be stored. These JSONs are generated from the chunks.")
-    parser.add_argument("--parquet", type=str, help="Path where the processed CSV are/should be stored as a paraquet file. These files are generated from the JSONs.")
+    parser.add_argument("--download", action='store_true', help="Include this flag to download chunks. --download does not require any argument")
+    parser.add_argument("--process", action='store_true', help="Include this flag to process chunks into JSON format. --process requires --start, and --end.")
+    parser.add_argument("--generate", action='store_true', help="Include this flag to generate the data frame and save the data as a paraquet file. --generate requires --metric and --level")
+    
     parser.add_argument("--start", type=str, help="Start time of the data extraction in the format %%Y-%%m-%%d %%H:%%M:%%S.")
     parser.add_argument("--end", type=str, help="End time of the data extraction in the format %%Y-%%m-%%d %%H:%%M:%%S.")
-    parser.add_argument("--level", type=str, help="Container level to filter on. Could be 'amf', 'support', 'upperlimit', 'amf+support' ")
-    parser.add_argument("--metric", type=str, help="Metric name to filter on. Leave empty for all metrics.")
+    parser.add_argument("--level", type=str, help="Container level to filter on. Could be 'amf', 'support', 'upperlimit', 'amf+support'")
+    parser.add_argument("--metric", type=str, help="Metric name to filter on. CPU: container_cpu_usage_seconds_total and Memory: container_memory_usage_bytes")
     parser.add_argument("--pod", type=str, help="Pod name to filter on. Leave empty for all pods.")
     
     args = parser.parse_args()
     
     if not any([args.download, args.process, args.generate]):
         parser.error("One of --download, --process, or --generate must be provided.")
-    if args.download and not args.chunks:
-        parser.error("--download requires --chunks.")
-    if args.process and not all([args.chunks, args.jsons, args.start, args.end]):
-        parser.error("--process requires --chunks, --jsons, --start, and --end.")
-    if args.generate and not all([args.jsons, args.parquet, args.level]):
-        parser.error("--generate requires --jsons, --parquet, and --level.")
+    if args.process and not all([args.start, args.end]):
+        parser.error("--process requires --start, and --end.")
+    if args.generate and not all([args.level, args.metric]):
+        parser.error("--generate requires --metric and --level")
     
     sys.stdout = open('logs/console_output.log', 'w')
     processor = AMFDataProcessor()
@@ -292,15 +299,18 @@ if __name__ == "__main__":
     summary_str = panda.describe().to_string().replace('\n', ' | ')
     head_str = panda.head().to_string().replace('\n', ' | ')
 
-    logging.info("Summary of Requested data:")
-    logging.info(summary_str)
-    logging.info("First few entries of requested data:")
-    logging.info(head_str)
+    logging.info(f"{os.path.basename(__file__)}::Summary of Requested data:")
+    logging.info(f"{os.path.basename(__file__)}::{summary_str}")
+    logging.info(f"{os.path.basename(__file__)}::First few entries of requested data:")
+    logging.info(f"{os.path.basename(__file__)}::{head_str}")
         
-    filename = "sample::" + os.path.basename(__file__) + "::metric:" + str(args.metric) + ";pod:" + str(args.pod) + ";level:" + str(args.level) + ";start:" + datetime.fromtimestamp(args.start).strftime('%Y-%m-%d %H:%M:%S') + ";end:" + datetime.fromtimestamp(args.end).strftime('%Y-%m-%d %H:%M:%S') 
-    filepath = os.path.join(args.parquet, filename)                                                                                 
+    filename = "sample::" + os.path.basename(__file__) + "::metric:" + str(args.metric) + ";pod:" + str(args.pod) + ";level:" + str(args.level) + ";start:" + datetime.fromtimestamp(args.start).strftime('%Y-%m-%d %H:%M:%S') + ";end:" + datetime.fromtimestamp(args.end).strftime('%Y-%m-%d %H:%M:%S')
+    if not os.path.exists("parquet"):
+        logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Creating folder: models")
+        os.makedirs("parquet")
+    filepath = os.path.join("parquet", filename)                                                                                 
     panda.to_parquet(filepath, compression='gzip')
-    logging.info(f"Data Saved to:{filepath}")    
+    logging.info(f"{os.path.basename(__file__)}::Data Saved to:{filepath}")    
         
                                                                                      
     
