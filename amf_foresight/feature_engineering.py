@@ -7,6 +7,7 @@ import logging
 import time
 import os
 import sys
+import inspect
 from utils import Utils
 
 setup_logger()
@@ -38,16 +39,16 @@ class FeatureEngineer:
         This function takes in a pandas dataframe and modifies the values based on the type of metric
         :param directory: Path to JSON files
         """
-        logging.info("Feature Engineering Data")
-        logging.info(f"Feature Type={metric}")
+        logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Feature Engineering Data")
+        logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Feature Type={metric}")
         if metric == 'memory':
-            logging.info(f"Dividing {metric} by 1048576")
+            logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Dividing {metric} by 1048576")
             data['values'] = data['values'] / 1048576
         elif metric == 'cpu':
-            logging.info(f"Leaving {metric} as is")
+            logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Leaving {metric} as is")
             data['values'] = data['values']
         elif metric == 'cpu_utilization':
-            logging.info(f"Calculation {metric} by dividing difference in consecutive difference in metric divided by time elapsed time 100")
+            logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Calculation {metric} by dividing difference in consecutive difference in metric divided by time elapsed time 100")
             data['time_diff'] = data['date_col'].diff().dt.total_seconds()
             data['usage_diff'] = data['values'].diff()
             data['utilization'] = (data['usage_diff'].diff()/data['time_diff']) * 100
@@ -55,7 +56,7 @@ class FeatureEngineer:
         return data
     
     def plot(self, df, args):
-        logging.info("Plotting dataframe")
+        logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Plotting dataframe")
         fig = px.line(df, x='date_col', y='values', color='container')
         fig.update_layout(
             title=args.metric,
@@ -68,7 +69,7 @@ class FeatureEngineer:
         image = "plot::" + os.path.basename(__file__) + "::metric:" + str(args.metric) + ";pod:" + str(args.pod) + ";level:" + str(args.level) + ";start:" + args.start + ";end:" + args.end + ".png"
         image_path = os.path.join("assets", image)
         fig.write_image(image_path, width=900, height=600)
-        logging.info(f"(Locally) Saved Plot to {image_path}")
+        logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::(Locally) Saved Plot to {image_path}")
         self.utils.upload_file(image_path, image_path)
             
 
@@ -85,12 +86,12 @@ if __name__ == "__main__":
     summary_str = data.describe().to_string().replace('\n', ' | ')
     head_str = data.head().to_string().replace('\n', ' | ')
     
-    logging.info("Summary of Requested data:")
-    logging.info(summary_str)
-    logging.info("First few entries of requested data:")
-    logging.info(head_str)
+    logging.info(f"{os.path.basename(__file__)}::Summary of Requested data:")
+    logging.info(f"{os.path.basename(__file__)}::{summary_str}")
+    logging.info(f"{os.path.basename(__file__)}::First few entries of requested data:")
+    logging.info(f"{os.path.basename(__file__)}::{head_str}")
 
     filename = "sample::" + str(os.path.basename(__file__)) + "::" + args.data.split("::")[-1] + ";type:" + args.type + ";time:" + datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
     path = "parquet/" + filename                                                                                 
     data.to_parquet(path, index=False)
-    logging.info(f"Data Saved to: {path}")
+    logging.info(f"{os.path.basename(__file__)}::Data Saved to: {path}")
