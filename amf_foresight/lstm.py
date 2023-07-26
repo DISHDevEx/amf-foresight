@@ -17,9 +17,10 @@ import matplotlib.pyplot as plt
 
 class LSTMModel:
 
-    def __init__(self, df, look_back=10, steps_ahead=1):
+    def __init__(self, df, metric, look_back=10, steps_ahead=1):
         self.look_back = look_back
         self.steps_ahead = steps_ahead
+        self.metric = metric
         self.scaler = MinMaxScaler(feature_range=(0, 1))
         self.df = df[['date_col', 'values']]
         self.df.set_index('date_col', inplace=True)
@@ -35,11 +36,9 @@ class LSTMModel:
         train_size = int(len(data) * 0.7)
         val_size = int(len(data) * 0.2)
 
-        # Scale the data
         self.scaler.fit(data[:train_size])
         transformed_data = self.scaler.transform(data)
 
-        # Split the data
         self.train, self.val, self.test = transformed_data[:train_size], transformed_data[train_size:train_size+val_size], transformed_data[train_size+val_size:]
         self.train_time, self.val_time, self.test_time = self.original_timestamps[:train_size], self.original_timestamps[train_size:train_size+val_size], self.original_timestamps[train_size+val_size:]
         self.train_original, self.val_original, self.test_original = self.original_data[:train_size], self.original_data[train_size:train_size+val_size], self.original_data[train_size+val_size:]
@@ -101,19 +100,22 @@ class LSTMModel:
         train_mse = mean_squared_error(Y_train_inv, np.mean(train_predict, axis=1))
         val_mse = mean_squared_error(Y_val_inv, np.mean(val_predict, axis=1))
         test_mse = mean_squared_error(Y_test_inv, np.mean(test_predict, axis=1))
- 
+         
+        val_predict_flat = val_predict.flatten()
+        test_predict_flat = test_predict.flatten()
+        
         # Create a figure
         plt.figure(figsize=(15,5))
+        plt.title(str(self.metric))
         
         plt.plot(self.train_time, self.train_original, label='Training data')
-        plt.plot(self.val_time, self.val_original, label='Testing Data')
-        plt.plot(self.test_time, self.test_original, label='Forecasting Data')
-            
-        plt.plot(self.train_time[self.look_back:len(train_predict)+self.look_back+1], np.mean(train_predict, axis=1), label='Training predictions')
-        plt.plot(self.val_time[self.look_back:len(val_predict)+self.look_back+1], np.mean(val_predict, axis=1), label='Testing predictions')
-        plt.plot(self.test_time[self.look_back:len(test_predict)+self.look_back+1], np.mean(test_predict, axis=1), label='Forecasting predictions')
-
-
+        
+        plt.scatter(self.val_time, self.val_original, label='Testing Data', color='orange', s=5)
+        plt.scatter(self.test_time, self.test_original, label='Forecasting Data', color='green', s=5)
+        plt.scatter(self.val_time[self.look_back:len(val_predict)+self.look_back+1], val_predict, s=5, color='purple', label='Testing predictions')
+        plt.scatter(self.test_time[self.look_back:len(test_predict)+self.look_back+1], test_predict, s=5, color='brown', label='Forecasting predictions')
+        
+        
         plt.legend()
 
         if not os.path.exists("assets"):
@@ -127,15 +129,12 @@ class LSTMModel:
         return train_mse, val_mse, test_mse, image_path
 
     def run(self):
-        # Prepare the data
-        self.split_data()  # Split data first
-        self.X, self.Y = self.create_dataset()  # Create dataset after splitting
+        self.split_data()  
+        self.X, self.Y = self.create_dataset() 
         self.reshape_data()
 
-        # Train the model and get the best hyperparameters
         best_params = self.training()
 
-        # Predict and plot the data
         train_mse, val_mse, test_mse, image_path = self.predict_and_plot()
 
         return best_params, train_mse, val_mse, test_mse, image_path
@@ -144,10 +143,10 @@ class LSTMModel:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train data on LSTM")
     parser.add_argument("--data", type=str, required=True, help="Path to filtered AMF data")
-    # parser.add_argument("--metric", type=str, required=True, help="Metric name to filter on. Leave empty for all metrics.")
+    parser.add_argument("--metric", type=str, required=True, help="Metric name to filter on. Leave empty for all metrics.")
     args = parser.parse_args()
     
-    df = pd.read_parquet(args.data)
+    df = pd.read_parquet(args.data, args.metric)
     metric = "memory"
     model = LSTMModel(df)
     hyper, val_mse, test_mse, image_path = model.run()
