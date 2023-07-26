@@ -38,11 +38,6 @@ Before you begin, ensure you have met the following requirements:
             ```
             python amf_foresight/pipeline.py.py --process --start "2023-01-01 00:00:00" --end "2023-01-31 23:59:59" --generate --metric "cpu" --type "utilization" --level "amf" --train --model "ARIMA"
             ```
-        - 
-    - Or you can process TSDB chunks into a the data frame, save it as a Parquet file, and then train the model, you can use the following command. (Ensure you have processed TSDB chunks in your 'jsons' folder before doing this)
-        ```
-        python amf_foresight/pipeline.py.py --train --data "/path/to/your/data.parquet" --model "ARIMA"
-        ```
 * Run the pipleine (Download TSDB chunks -> Process the TSDB chunks into JSON files -> Generate dataframe -> Train a model):
     ```bash
     python amf_foresight/pipeline.py --download --process --start [START_TIME] --end [END_TIME] --generate --level [CONTAINER_LEVEL] --type [FEATURE_TYPE] --metric [METRIC] --train --model [MODEL_TYPE]
