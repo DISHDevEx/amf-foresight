@@ -16,17 +16,17 @@ Before you begin, ensure you have met the following requirements:
 * Downloading TSDB chunks:
     - To download the TSDB chunks, run the script as follows (This should be done once before any of the next steps):
         ```bash
-        python amf_foresight/pipeline.py.py --download
+        python amf_foresight/pipeline.py --download
         ```
 * Processing the TSDB chunks into JSON files:
     - To convert the TSDB chunks in your required timeframe into JSON files, you'll need to provide the start and end dates for the data extraction:
         ```bash
-        python amf_foresight/pipeline.py --process --start "2023-01-01 00:00:00" --end "2023-01-31 23:59:59"
+        python amf_foresight/pipeline.py --process --start "2023-06-06 14:00:00" --end "2023-06-06 16:00:00"
         ```
 * Generating the dataframe:
     - To generate a pandas dataframe and save it as a Parquet file, you'll need to specify the metric, type, and level:
         ```bash
-        python amf_foresight/pipeline.py.py --generate --metric "cpu" --type "utilization" --level "amf"
+        python amf_foresight/pipeline.py --generate --metric "cpu" --type "utilization" --level "amf"
         ```    
 * Training a model:
     - To train a model, you'll need to specify the data source and the model type. 
@@ -36,7 +36,7 @@ Before you begin, ensure you have met the following requirements:
             ```
         - Or you can process the data, generate the data frame, save it as a Parquet file, and then train the model, you can use the following command:
             ```
-            python amf_foresight/pipeline.py.py --process --start "2023-01-01 00:00:00" --end "2023-01-31 23:59:59" --generate --metric "cpu" --type "utilization" --level "amf" --train --model "ARIMA"
+            python amf_foresight/pipeline.py --process --start "2023-06-06 14:00:00" --end "2023-06-06 16:00:00" --generate --metric "container_cpu_usage_seconds_total" --type "utilization" --level "amf" --train --model "ARIMA"
             ```
 * Run the pipleine (Download TSDB chunks -> Process the TSDB chunks into JSON files -> Generate dataframe -> Train a model):
     ```bash
