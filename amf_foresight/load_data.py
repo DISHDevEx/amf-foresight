@@ -187,7 +187,6 @@ class AMFDataProcessor:
         """
         obj = Nested_Json_Connector(json_object_path, setup = "32gb")
         err, data = obj.read_nested_json()
-        err, data = obj.read_nested_json()
         data = data.select('timestamps', 'metric___name__', 'values', 'metric_pod', 'metric_container', 'metric_name', 'metric_image', 'metric_id', 'metric_namespace')
         data = data.filter(F.col("metric_namespace") == "openverso")
         data = data.filter(F.col('metric_pod').startswith('open5gs-amf'))
