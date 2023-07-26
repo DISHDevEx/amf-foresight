@@ -5,7 +5,6 @@ from datetime import datetime
 from setup_logger import setup_logger
 from feature_engineering import FeatureEngineer
 from arima import ARIMAModel
-from autoregression import AutoRegressionModel
 from lstm import LSTMModel
 from utils import Utils
 import argparse
