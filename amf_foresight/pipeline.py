@@ -46,14 +46,11 @@ class Orchestrator:
         :param args: Command line arguments parsed by argparse.ArgumentParser.
         :return: processed pandas dataframe
         """
-        logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Converting chunks to JSONS..")
         raw = self.processor.run(args)
-        logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Converted chunks to JSONS")
+        processed = None
         if args.generate:
-            logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Preprocessing Data..")
             processed = self.feature_engineer.value_modifier(raw, args.type)
             self.feature_engineer.plot(processed, args)
-            logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Preprocessed Data.")
         return processed
     
     def train(self, args):
