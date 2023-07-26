@@ -26,7 +26,7 @@ Before you begin, ensure you have met the following requirements:
 * Generating the dataframe:
     - To generate a pandas dataframe and save it as a Parquet file, you'll need to specify the metric, type, and level:
         ```bash
-        python amf_foresight/pipeline.py --generate --metric "cpu" --type "utilization" --level "amf"
+        python amf_foresight/pipeline.py --generate --metric "container_cpu_usage_seconds_total" --type "utilization" --level "amf"
         ```    
 * Training a model:
     - To train a model, you'll need to specify the data source and the model type. 
