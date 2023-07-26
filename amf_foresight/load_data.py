@@ -298,6 +298,9 @@ class AMFDataProcessor:
 
         :param local_path: The local path where chunks of raw data are to be saved.
         """
+        if not os.path.exists("chunks"):
+            logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Creating folder: chunks")
+            os.makedirs("chunks")
         aws_command = f"{os.environ.get('s3')} {local_path} --recursive"
         result = subprocess.run(aws_command, shell=True, check=True)
         
