@@ -3,7 +3,6 @@ from pyspark.sql.types import FloatType, TimestampType, LongType
 from pyspark.sql import SparkSession
 from datetime import datetime
 from setup_logger import setup_logger
-from collections import defaultdict
 from utils import Utils
 import plotly.express as px
 import pyspark.sql.functions as F
