@@ -18,7 +18,7 @@ setup_logger()
 
 class Orchestrator:
     """
-    Preprocess the data for modeling.
+    Preprocess, model and evaluate model on Prometheus Data.
 
     :param args: Command line arguments parsed by argparse.ArgumentParser.
     :return: processed pandas dataframe
