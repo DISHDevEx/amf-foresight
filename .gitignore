@@ -1,3 +1,11 @@
+models/
+tsdb-json/
+chunks/
+assets/
+jsons/
+logs/
+parquet/
+
 # Editors
 .vscode/
 .idea/
