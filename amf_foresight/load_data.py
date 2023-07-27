@@ -121,6 +121,12 @@ class AMFDataProcessor:
         return spark_dataframe, pandas_dataframe
     
     def get_min_max_time(self, directory, file_names):
+        """
+        Get min time and and max time in String format from filenames
+
+        :param directory: Directory from where to fetch the file names
+        :param file_names: List of file names 
+        """
         min_time = None
         max_time = None
         for file_name in file_names:
@@ -278,7 +284,8 @@ class AMFDataProcessor:
         given_min_time = int(given_min_time_dt.timestamp() * 1000)
         given_max_time = int(given_max_time_dt.timestamp() * 1000)
         logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Requested time interval: {given_min_time_str} - {given_max_time_str}")
-        
+        bucket_min_time_dt = None
+        bucket_max_time_dt = None
         for chunk_folder in os.listdir(folder_path):
             chunk_folder_path = os.path.join(folder_path, chunk_folder)
             if os.path.isdir(chunk_folder_path) and chunk_folder != '.ipynb_checkpoints':
@@ -287,15 +294,19 @@ class AMFDataProcessor:
                     meta = json.load(file)
                 min_time = meta["minTime"]
                 max_time = meta["maxTime"]
-                
-
+                min_time_dt = datetime.fromtimestamp(min_time/1000)
+                max_time_dt = datetime.fromtimestamp(max_time/1000)
+                if bucket_min_time_dt is None or min_time_dt < bucket_min_time_dt:
+                    bucket_min_time_dt = min_time_dt
+                if bucket_max_time_dt is None or max_time_dt > bucket_max_time_dt:
+                    bucket_max_time_dt = max_time_dt
                 if min_time >= given_min_time and max_time <= given_max_time:
-                    min_time_str = datetime.fromtimestamp(min_time/1000).strftime('%Y-%m-%d %H-%M-%S')
-                    max_time_str = datetime.fromtimestamp(max_time/1000).strftime('%Y-%m-%d %H-%M-%S')
+                    min_time_str = min_time_dt.strftime('%Y-%m-%d %H-%M-%S')
+                    max_time_str = max_time_dt.strftime('%Y-%m-%d %H-%M-%S')
                     file_min_time_str = datetime.fromtimestamp(min_time/1000).strftime('%Y%m%d %H%M%S')
                     file_max_time_str = datetime.fromtimestamp(max_time/1000).strftime('%Y%m%d %H%M%S')
                     logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Selected chunk's time interval: {min_time_str} - {max_time_str}")
-                    command = ['./amf_foresight/main','-bucket','open5gs-respons-logs','-prefix','prometheus-metrics/respons-amf-forecaster/'+ str(chunk_folder),'-local-path','tsdb-json','-block','tsdb-json/prometheus-metrics/respons-amf-forecaster/' + str(chunk_folder)]
+                    command = ['./prometheus-tsdb-dump/main','-bucket', os.environ.get('bucket'),'-prefix', os.environ.get('prefix') + str(chunk_folder),'-local-path', os.environ.get('local_path'),'-block', os.environ.get('block') + str(chunk_folder)]
                     output = subprocess.run(command, capture_output=True)
                     filename = str(file_min_time_str) + "-" + str(file_max_time_str) + '.json'
                     with open(os.path.join(destination_path, filename), 'w') as file:
@@ -306,9 +317,14 @@ class AMFDataProcessor:
                         file.writelines(lines[3:])
                     logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::(Locally) Saved JSON to {os.path.join(destination_path, filename)}")
                     self.utils.upload_file(str(os.path.join(destination_path, filename)), str(os.path.join(destination_path, filename)))
-                    
-                    
-                    
+        bucket_min_time_str = datetime.strftime(bucket_min_time_dt, '%Y-%m-%d %H:%M:%S')
+        bucket_max_time_str = datetime.strftime(bucket_max_time_dt, '%Y-%m-%d %H:%M:%S')
+        if given_min_time_dt < bucket_min_time_dt or given_max_time_dt > bucket_max_time_dt:
+            logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::No chunks processed")
+            logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Chunks available only from {bucket_min_time_str} to {bucket_max_time_str}")
+            raise ValueError(f"--start and --end should be within  {bucket_min_time_str} and {bucket_max_time_str}")
+        logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Chunks available from {bucket_min_time_str} to {bucket_max_time_str}")            
+    
     def download_chunks(self, local_path):
         """
         Download chunks of raw data and save it to the given local path.
@@ -318,7 +334,7 @@ class AMFDataProcessor:
         if not os.path.exists("chunks"):
             logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Creating folder: chunks")
             os.makedirs("chunks")
-        aws_command = f"{os.environ.get('s3')} {local_path} --recursive"
+        aws_command = f"aws s3 cp s3://{os.environ.get('bucket')}/{os.environ.get('prefix')} {local_path} --recursive"
         result = subprocess.run(aws_command, shell=True, check=True)
         
     
@@ -365,9 +381,5 @@ if __name__ == "__main__":
         os.makedirs("parquet")
     filepath = os.path.join("parquet", filename)                                                                                 
     panda.to_parquet(filepath, compression='gzip')
-    logging.info(f"{os.path.basename(__file__)}::Data Saved to:{filepath}")    
-        
-                                                                                     
-    
-
+    logging.info(f"{os.path.basename(__file__)}::Data Saved to:{filepath}")
     
