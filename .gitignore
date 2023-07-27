@@ -1,4 +1,5 @@
 models/
+prometheus-tsdb-dump/
 tsdb-json/
 chunks/
 assets/
