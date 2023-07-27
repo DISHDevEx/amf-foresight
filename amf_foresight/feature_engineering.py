@@ -70,12 +70,14 @@ class FeatureEngineer:
             data.fillna(0, inplace=True)
         return data
     
-    def plot(self, df, args):
+    def plot(self, df, args, start_time, end_time):
         """
         Plots the DataFrame and saves the plot locally and in cloud storage.
 
         :param df: DataFrame to be plotted.
         :param args: Arguments related to the plot.
+        :param start_time: start time for saving.
+        :param end_time: end time for saving.
         """
         logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Plotting dataframe")
         fig = px.line(df, x='date_col', y='values', color='container')
@@ -87,7 +89,7 @@ class FeatureEngineer:
         fig.show()
         if not os.path.exists("assets"):
             os.makedirs("assets")
-        image = "plot::" + os.path.basename(__file__) + "::metric:" + str(args.metric) + ";pod:" + str(args.pod) + ";level:" + str(args.level) + ";start:" + args.start + ";end:" + args.end + ".png"
+        image = "plot::" + os.path.basename(__file__) + "::metric:" + str(args.metric) + ";pod:" + str(args.pod) + ";level:" + str(args.level) + ";start:" + start_time + ";end:" + end_time + ".png"
         image_path = os.path.join("assets", image)
         fig.write_image(image_path, width=900, height=600)
         logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::(Locally) Saved Plot to {image_path}")

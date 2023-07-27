@@ -34,6 +34,8 @@ class AMFDataProcessor:
         Initialize AMFDataProcessor and create an instance of Utils class.
         """
         self.utils = Utils()
+        self.min_time_str = None 
+        self.max_time_str = None
     
     def clear_folders(self, folders):
         """
@@ -79,7 +81,9 @@ class AMFDataProcessor:
             logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Running with arguments for generate: metric={args.metric}, level={args.level}, pod={args.pod}")
             spark, panda = self.get_data("jsons", args.level, args.metric, args.pod)
             logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Generated dataframe")
-            logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Plotting dataframe")
+            logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Plotting dataframe..")
+            self.plot(panda, args)
+            logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Plotted dataframe")
             return panda
     
     def plot(self, df, args):
@@ -98,7 +102,7 @@ class AMFDataProcessor:
         fig.show()
         if not os.path.exists("assets"):
             os.makedirs("assets")
-        image = "plot::" + os.path.basename(__file__) + "::metric:" + str(args.metric) + ";pod:" + str(args.pod) + ";level:" + str(args.level) + ";start:" + args.start + ";end:" + args.end + ".png"
+        image = "plot::" + os.path.basename(__file__) + "::metric:" + str(args.metric) + ";pod:" + str(args.pod) + ";level:" + str(args.level) + ";start:" + self.min_time_str + ";end:" + self.max_time_str + ".png"
         image_path = os.path.join("assets", image)
         fig.write_image(image_path, width=800, height=600)
         logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::(Locally) Saved Plot to {image_path}")
@@ -119,7 +123,23 @@ class AMFDataProcessor:
         spark_dataframe = self.transform_dataframe(spark_dataframes, metric, pod)
         pandas_dataframe = self.get_values(spark_dataframe, container_level)
         return spark_dataframe, pandas_dataframe
-
+    
+    def get_min_max_time(self, directory, file_names):
+        min_time = None
+        max_time = None
+        for file_name in file_names:
+            if os.path.isfile(os.path.join(directory, file_name)):
+                start_time_str, end_time_str = file_name[:-5].split("-")
+                start_time = datetime.strptime(start_time_str, '%Y%m%d %H%M%S')
+                end_time = datetime.strptime(end_time_str, '%Y%m%d %H%M%S')
+                if min_time is None or start_time < min_time:
+                    min_time = start_time
+                if max_time is None or end_time > max_time:
+                    max_time = end_time
+        min_time_str = datetime.strftime(min_time, '%Y-%m-%d %H:%M:%S')
+        max_time_str = datetime.strftime(max_time, '%Y-%m-%d %H:%M:%S')
+        return min_time_str, max_time_str
+    
     def get_dataframes(self, directory, container_level):
         """
         Get dataframes from all the json files in the directory.
@@ -128,6 +148,7 @@ class AMFDataProcessor:
         :param container_level: Level of the container.
         """
         flag = False
+        self.min_time_str, self.max_time_str = self.get_min_max_time(directory, os.listdir(directory))
         for i, filename in enumerate(os.listdir(directory)):
             if os.path.isfile(os.path.join(directory, filename)) and not flag:
                 appended_df = self.get_amf_data(os.path.join(directory, filename), container_level)
@@ -342,7 +363,7 @@ if __name__ == "__main__":
     logging.info(f"{os.path.basename(__file__)}::First few entries of requested data:")
     logging.info(f"{os.path.basename(__file__)}::{head_str}")
         
-    filename = "sample::" + os.path.basename(__file__) + "::metric:" + str(args.metric) + ";pod:" + str(args.pod) + ";level:" + str(args.level) + ";start:" + datetime.fromtimestamp(args.start).strftime('%Y-%m-%d %H:%M:%S') + ";end:" + datetime.fromtimestamp(args.end).strftime('%Y-%m-%d %H:%M:%S')
+    filename = "sample::" + os.path.basename(__file__) + "::metric:" + str(args.metric) + ";pod:" + str(args.pod) + ";level:" + str(args.level) + ";start:" + processor.min_time_str + ";end:" + processor.max_time_str
     if not os.path.exists("parquet"):
         logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Creating folder: models")
         os.makedirs("parquet")

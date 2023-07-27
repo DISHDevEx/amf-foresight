@@ -50,7 +50,7 @@ class Orchestrator:
         processed = None
         if args.generate:
             processed = self.feature_engineer.value_modifier(raw, args.type)
-            self.feature_engineer.plot(processed, args)
+            self.feature_engineer.plot(processed, args, self.processor.min_time_str, self.processor.max_time_str)
         return processed
     
     def train(self, args):
@@ -101,7 +101,7 @@ class Orchestrator:
         logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::{summary_str}")
         logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::First few entries of requested data:")
         logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::{head_str}")
-        filename = "sample::" + os.path.basename(__file__) + "::metric:" + str(args.metric) + ";pod:" + str(args.pod) + ";level:" + str(args.level) + ";start:" + args.start + ";end:" + args.end
+        filename = "sample::" + os.path.basename(__file__) + "::metric:" + str(args.metric) + ";pod:" + str(args.pod) + ";level:" + str(args.level) + ";start:" + self.processor.min_time_str + ";end:" + self.processor.max_time_str
         if not os.path.exists("parquet"):
             logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::Creating folder: models")
             os.makedirs("parquet")
