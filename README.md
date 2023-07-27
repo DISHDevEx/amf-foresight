@@ -51,4 +51,3 @@ Before you begin, ensure you have met the following requirements:
     * `--metric`: Replace `[METRIC]` with the metric name to filter on. Leave empty for all metrics.
     * `--train`: Include this flag to train your data.
     * `--model`: Replace `[MODEL_TYPE]` with the model you would like to use.
-    
