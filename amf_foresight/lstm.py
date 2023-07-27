@@ -138,7 +138,7 @@ class LSTMModel:
         val_predict_flat = val_predict.flatten()
         test_predict_flat = test_predict.flatten()
         
-        plt.figure(figsize=(15,5))
+        plt.figure(figsize=(15,7))
         plt.title(str(self.metric))
         
         plt.plot(self.train_time, self.train_original, label='Training data')

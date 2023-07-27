@@ -1,6 +1,4 @@
-from devex_sdk import Spark_Data_Connector, Nested_Json_Connector
-from pyspark.sql.types import FloatType, TimestampType, LongType
-from pyspark.sql import SparkSession
+from devex_sdk import Nested_Json_Connector
 from datetime import datetime
 from setup_logger import setup_logger
 from utils import Utils
@@ -8,11 +6,9 @@ import plotly.express as px
 import pyspark.sql.functions as F
 import pandas as pd
 import time
-import csv
 import os
 import json
 import boto3
-import itertools
 import pyspark
 import logging
 import argparse
@@ -104,7 +100,7 @@ class AMFDataProcessor:
             os.makedirs("assets")
         image = "plot::" + os.path.basename(__file__) + "::metric:" + str(args.metric) + ";pod:" + str(args.pod) + ";level:" + str(args.level) + ";start:" + self.min_time_str + ";end:" + self.max_time_str + ".png"
         image_path = os.path.join("assets", image)
-        fig.write_image(image_path, width=800, height=600)
+        fig.write_image(image_path, width=900, height=600)
         logging.info(f"{os.path.basename(__file__)}::{self.__class__.__name__}::{inspect.currentframe().f_code.co_name}::(Locally) Saved Plot to {image_path}")
         self.utils.upload_file(image_path, image_path)
         
