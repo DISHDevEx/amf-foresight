@@ -1,3 +1,12 @@
+models/
+prometheus-tsdb-dump/
+tsdb-json/
+chunks/
+assets/
+jsons/
+logs/
+parquet/
+
 # Editors
 .vscode/
 .idea/
