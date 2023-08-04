@@ -1,5 +1,7 @@
 # AMF Foresight
 
+To see detailed overview about our research please refer to our Wiki: https://github.com/DISHDevEx/amf-foresight/wiki
+
 ## AMF Data Processing and Forecasting Pipeline: Orchestrator
 This script integrates the `AMFDataProcessor`, `FeatureEngineer`, and multiple machine learning model classes (`ARIMAModel`, `ProphetModel`, `LSTMModel`) through an `Orchestrator` class to create a comprehensive data pipeline for AMF data.
 
