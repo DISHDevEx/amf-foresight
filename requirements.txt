@@ -1,5 +1,5 @@
 devex_sdk==1.0.4
 kaleido==0.2.1
-tensorflow==2.11.1
+tensorflow==2.12.0
 keras==2.11.0
 prophet==1.1.4
